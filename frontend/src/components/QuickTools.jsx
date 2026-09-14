@@ -14,7 +14,7 @@ import SourceCard from './SourceCard'
  * panel, discarding the rest of the response.
  */
 
-function ToolShell({ icon: Icon, title, lede, children }) {
+function ToolShell({ icon: Icon, title, lede, copy, children }) {
   return (
     <div className="animate-in">
       <div className="flex items-start gap-3 mb-1">
@@ -22,7 +22,7 @@ function ToolShell({ icon: Icon, title, lede, children }) {
           <Icon size={17} strokeWidth={2.2} />
         </span>
         <div>
-          <p className="section-kicker mb-1">Focused research tool</p>
+          <p className="section-kicker mb-1">{copy.focusedTool}</p>
           <h2 className="font-serif text-2xl text-green-dark leading-tight">{title}</h2>
           <p className="text-sm text-ink/60 mt-1 max-w-2xl">{lede}</p>
         </div>
@@ -32,7 +32,7 @@ function ToolShell({ icon: Icon, title, lede, children }) {
   )
 }
 
-function QueryBox({ value, onChange, placeholder, onSubmit, loading, buttonLabel, extra }) {
+function QueryBox({ value, onChange, placeholder, onSubmit, loading, buttonLabel, loadingLabel, extra }) {
   return (
     <div className="dossier-panel p-4 sm:p-5 mb-6 border-green/20">
       {extra && <div className="flex items-center justify-end mb-3">{extra}</div>}
@@ -50,14 +50,14 @@ function QueryBox({ value, onChange, placeholder, onSubmit, loading, buttonLabel
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-green text-paper text-sm font-semibold rounded-md hover:bg-green-dark hover:-translate-y-0.5 disabled:opacity-50 transition-all shadow-panel"
         >
           {loading && <Loader2 size={14} className="animate-spin" />}
-          {loading ? 'Working…' : buttonLabel}
+          {loading ? loadingLabel : buttonLabel}
         </button>
       </div>
     </div>
   )
 }
 
-export function ABSTool({ copy }) {
+export function ABSTool({ copy, language }) {
   const [query, setQuery] = useState('')
   const [jurisdiction, setJurisdiction] = useState('India')
   const [loading, setLoading] = useState(false)
@@ -68,7 +68,7 @@ export function ABSTool({ copy }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.analyze({ query, jurisdiction, language: 'en' })
+      const res = await api.analyze({ query, jurisdiction, language })
       setResult(res)
     } catch (e) {
       setError(copy.systemError)
@@ -80,7 +80,7 @@ export function ABSTool({ copy }) {
   const checklist = result?.abs_checklist
 
   return (
-    <ToolShell icon={ShieldCheck} title={copy.absTitle} lede={copy.absLede}>
+    <ToolShell icon={ShieldCheck} title={copy.absTitle} lede={copy.absLede} copy={copy}>
       <QueryBox
         value={query}
         onChange={setQuery}
@@ -88,6 +88,7 @@ export function ABSTool({ copy }) {
         onSubmit={run}
         loading={loading}
         buttonLabel={copy.absButton}
+        loadingLabel={copy.working}
         extra={<JurisdictionSwitch value={jurisdiction} onChange={setJurisdiction} copy={copy} />}
       />
 
@@ -98,13 +99,13 @@ export function ABSTool({ copy }) {
           <div className="dossier-panel p-5 border-gold/40 animate-in">
             <p className="section-kicker mb-3 font-medium flex items-center gap-2">
               <Search size={14} />
-              Potential ABS Considerations
+              {copy.absConsiderations}
             </p>
             <ul className="text-sm space-y-2 text-ink/75">
-              <li className="flex items-center gap-2">{checklist.biological_resource_involved ? <Check size={15} className="text-green" /> : <Minus size={15} className="text-ink/35" />} Biological resource involved</li>
-              <li className="flex items-center gap-2">{checklist.provenance_identified ? <Check size={15} className="text-green" /> : <Minus size={15} className="text-ink/35" />} Source/provenance identified</li>
-              <li className="flex items-center gap-2">{checklist.abs_framework_identified ? <Check size={15} className="text-green" /> : <Minus size={15} className="text-ink/35" />} Relevant ABS framework identified</li>
-              <li className="flex items-center gap-2">{checklist.supporting_source_retrieved ? <Check size={15} className="text-green" /> : <Minus size={15} className="text-ink/35" />} Supporting source retrieved</li>
+              <li className="flex items-center gap-2">{checklist.biological_resource_involved ? <Check size={15} className="text-green" /> : <Minus size={15} className="text-ink/35" />} {copy.absChecklist.biologicalResource}</li>
+              <li className="flex items-center gap-2">{checklist.provenance_identified ? <Check size={15} className="text-green" /> : <Minus size={15} className="text-ink/35" />} {copy.absChecklist.provenance}</li>
+              <li className="flex items-center gap-2">{checklist.abs_framework_identified ? <Check size={15} className="text-green" /> : <Minus size={15} className="text-ink/35" />} {copy.absChecklist.framework}</li>
+              <li className="flex items-center gap-2">{checklist.supporting_source_retrieved ? <Check size={15} className="text-green" /> : <Minus size={15} className="text-ink/35" />} {copy.absChecklist.source}</li>
             </ul>
             <p className="text-xs text-ink/50 mt-3">{checklist.note}</p>
           </div>
@@ -114,13 +115,13 @@ export function ABSTool({ copy }) {
       )}
 
       {!result && !loading && !error && (
-          <EmptyTool icon={ShieldCheck} label="ABS checklist" text={copy.absEmpty} />
+          <EmptyTool icon={ShieldCheck} label={copy.absChecklistLabel} preview={copy.preview} text={copy.absEmpty} />
       )}
     </ToolShell>
   )
 }
 
-export function TKDLTool({ copy }) {
+export function TKDLTool({ copy, language }) {
   const [query, setQuery] = useState('')
   const [jurisdiction, setJurisdiction] = useState('India')
   const [loading, setLoading] = useState(false)
@@ -131,7 +132,7 @@ export function TKDLTool({ copy }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.analyze({ query, jurisdiction, language: 'en' })
+      const res = await api.analyze({ query, jurisdiction, language })
       setResult(res)
     } catch (e) {
       setError(copy.systemError)
@@ -141,7 +142,7 @@ export function TKDLTool({ copy }) {
   }
 
   return (
-    <ToolShell icon={ScrollText} title={copy.tkdlTitle} lede={copy.tkdlLede}>
+    <ToolShell icon={ScrollText} title={copy.tkdlTitle} lede={copy.tkdlLede} copy={copy}>
       <QueryBox
         value={query}
         onChange={setQuery}
@@ -149,6 +150,7 @@ export function TKDLTool({ copy }) {
         onSubmit={run}
         loading={loading}
         buttonLabel={copy.tkdlButton}
+        loadingLabel={copy.working}
         extra={<JurisdictionSwitch value={jurisdiction} onChange={setJurisdiction} copy={copy} />}
       />
 
@@ -160,14 +162,14 @@ export function TKDLTool({ copy }) {
             <div className="dossier-panel p-5 border-gold/40 animate-in mb-4">
               <p className="section-kicker mb-1.5 font-medium flex items-center gap-2">
                 <Search size={14} />
-                Traditional Knowledge / Prior-Art Pointer
+                {copy.tkPointer}
               </p>
               <p className="text-sm text-ink/75">{result.tk_pointer}</p>
             </div>
             {result.sources?.length > 0 && (
               <div className="grid gap-3">
                 {result.sources.map((s, i) => (
-                  <SourceCard key={s.id} source={s} index={i} />
+                  <SourceCard key={s.id} source={s} index={i} copy={copy} />
                 ))}
               </div>
             )}
@@ -178,12 +180,12 @@ export function TKDLTool({ copy }) {
       )}
 
       {!result && !loading && !error && (
-        <EmptyTool icon={ScrollText} label="TKDL pointer" text={copy.tkdlEmpty} />
+        <EmptyTool icon={ScrollText} label={copy.tkdlPointerLabel} preview={copy.preview} text={copy.tkdlEmpty} />
       )}
     </ToolShell>
   )
 }
 
-function EmptyTool({ icon: Icon, label, text }) {
-  return <div className="tool-empty"><div className="ghost-document"><Icon size={18} /><span /><span /><span /></div><div><p className="citation-marker text-[10px] uppercase tracking-[0.14em] text-gold-dark">{label} preview</p><p className="text-sm text-ink/55 mt-1 max-w-sm">{text}</p></div></div>
+function EmptyTool({ icon: Icon, label, preview, text }) {
+  return <div className="tool-empty"><div className="ghost-document"><Icon size={18} /><span /><span /><span /></div><div><p className="citation-marker text-[10px] uppercase tracking-[0.14em] text-gold-dark">{label} {preview}</p><p className="text-sm text-ink/55 mt-1 max-w-sm">{text}</p></div></div>
 }

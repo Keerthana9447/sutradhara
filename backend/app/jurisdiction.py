@@ -9,6 +9,20 @@ should never even see an Indian statute chunk, and vice versa.
 from typing import List
 
 VALID_JURISDICTIONS = {"India", "International"}
+_FOREIGN_COUNTRIES = {
+    "afghanistan", "australia", "bangladesh", "brazil", "canada", "china",
+    "france", "germany", "indonesia", "japan", "nepal", "pakistan",
+    "singapore", "south africa", "sri lanka", "thailand", "uk", "united kingdom",
+    "united states", "usa", "vietnam",
+}
+
+
+def has_unsupported_foreign_country(query: str, jurisdiction: str) -> bool:
+    """Return True when India is selected but the query asks about another country."""
+    if jurisdiction != "India":
+        return False
+    q = query.lower()
+    return any(country in q for country in _FOREIGN_COUNTRIES)
 
 _AREA_KEYWORDS = {
     "Patents": ["patent", "patentable", "invention", "novelty", "inventive step", "pct", "international patent application"],

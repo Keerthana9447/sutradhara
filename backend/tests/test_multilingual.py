@@ -28,6 +28,10 @@ TE_QUERY = (
     "సాంప్రదాయ ఆయుర్వేద గ్రంథంలో ఇప్పటికే వివరించబడిన ఒక శాస్త్రీయ ఆయుర్వేద "
     "ఫార్ములేషన్‌కు నేను పేటెంట్ పొందగలనా?"
 )
+HI_QUERY = (
+    "पारंपरिक आयुर्वेदिक ग्रंथ में पहले से वर्णित शास्त्रीय आयुर्वेदिक "
+    "फॉर्मूलेशन के लिए क्या मैं पेटेंट प्राप्त कर सकता हूं?"
+)
 # NOTE: a trademark-fee question used to be the "unsupported" example here.
 # After the corpus expansion (brief's RAG-upgrade task) added a real Trade
 # Marks Act, 1999 entry, that question started retrieving genuine (if
@@ -58,6 +62,7 @@ def _run_pipeline(retrieval_query: str, jurisdiction_name: str = "India"):
 def test_language_detection():
     assert language.detect_language(EN_QUERY) == "en"
     assert language.detect_language(TE_QUERY) == "te"
+    assert language.detect_language(HI_QUERY) == "hi"
 
 
 def test_english_query_retrieves_evidence_and_does_not_abstain():
@@ -85,6 +90,24 @@ def test_telugu_query_via_fallback_normalization_retrieves_same_evidence():
     ids_te = {s["id"] for s in retrieved_te}
     overlap = ids_en & ids_te
     assert len(overlap) >= 1, f"expected overlapping sources, got EN={ids_en} TE={ids_te}"
+
+
+def test_hindi_query_via_fallback_normalization_retrieves_same_evidence():
+    normalized = language.fallback_normalize(HI_QUERY)
+    assert normalized.strip(), "fallback normalization must not return empty text"
+
+    classification_en, areas_en, retrieved_en, _, abstained_en = _run_pipeline(EN_QUERY)
+    classification_hi, areas_hi, retrieved_hi, _, abstained_hi = _run_pipeline(normalized)
+
+    assert not abstained_en
+    assert not abstained_hi, "Hindi-equivalent query must not abstain when English does not"
+    assert classification_hi.category == classification_en.category
+    assert set(areas_hi) & set(areas_en), "expected overlapping applicable areas"
+
+    ids_en = {s["id"] for s in retrieved_en}
+    ids_hi = {s["id"] for s in retrieved_hi}
+    overlap = ids_en & ids_hi
+    assert len(overlap) >= 1, f"expected overlapping sources, got EN={ids_en} HI={ids_hi}"
 
 
 def test_unsupported_query_still_abstains():

@@ -2,9 +2,9 @@ import { ArrowRight, Check, FileText, Landmark, Search, ShieldCheck } from 'luci
 import Logo from './Logo'
 
 const TRACE = [
-  { Icon: Search, label: 'Product query', value: 'Ashwagandha extract with a novel process' },
-  { Icon: Landmark, label: 'Classification', value: 'Phytopharmaceutical / biological resource' },
-  { Icon: FileText, label: 'Evidence route', value: 'Biological Diversity Act, 2002 · Section 7' },
+  { Icon: Search, key: 'product' },
+  { Icon: Landmark, key: 'classification' },
+  { Icon: FileText, key: 'evidence' },
 ]
 
 export default function Hero({ copy, onStart }) {
@@ -23,26 +23,26 @@ export default function Hero({ copy, onStart }) {
             {copy.heroCta}
             <ArrowRight size={16} />
           </button>
-          <p className="text-xs text-ink/40">Built for the Ministry of AYUSH &amp; All India Institute of Ayurveda</p>
+          <p className="text-xs text-ink/40">{copy.builtFor}</p>
         </div>
       </div>
 
       <div className="hero-trace mb-10">
         <div className="hero-trace__intro">
-          <p className="section-kicker mb-2 text-gold-light">A live evidence trail</p>
-          <h2 className="font-serif text-2xl sm:text-3xl text-paper leading-tight">From product to provision, with the chain visible.</h2>
-          <p className="text-sm text-paper/65 mt-3 max-w-sm leading-relaxed">SUTRADHARA classifies the question, routes the relevant regime, and keeps the source in view.</p>
-          <div className="mt-6 flex items-center gap-2 text-xs text-paper/55"><ShieldCheck size={15} className="text-gold-light" /> Citation-grounded by design</div>
+          <p className="section-kicker mb-2 text-gold-light">{copy.liveEvidenceTrail}</p>
+          <h2 className="font-serif text-2xl sm:text-3xl text-paper leading-tight">{copy.heroTraceTitle}</h2>
+          <p className="text-sm text-paper/65 mt-3 max-w-sm leading-relaxed">{copy.heroTraceBody}</p>
+          <div className="mt-6 flex items-center gap-2 text-xs text-paper/55"><ShieldCheck size={15} className="text-gold-light" /> {copy.citationGrounded}</div>
         </div>
         <div className="hero-trace__steps">
-          {TRACE.map(({ Icon, label, value }, index) => (
-            <div key={label} className="trace-step" style={{ animationDelay: `${index * 100}ms` }}>
+          {TRACE.map(({ Icon, key }, index) => (
+            <div key={key} className="trace-step" style={{ animationDelay: `${index * 100}ms` }}>
               <span className="trace-step__icon"><Icon size={16} /></span>
-              <div><p className="citation-marker text-[10px] uppercase tracking-[0.12em] text-gold-light/80">{label}</p><p className="text-sm text-paper/90 mt-1 leading-snug">{value}</p></div>
+              <div><p className="citation-marker text-[10px] uppercase tracking-[0.12em] text-gold-light/80">{copy.heroTrace[index].label}</p><p className="text-sm text-paper/90 mt-1 leading-snug">{copy.heroTrace[index].value}</p></div>
               {index < TRACE.length - 1 && <span className="trace-step__line" aria-hidden="true" />}
             </div>
           ))}
-          <div className="trace-result"><Check size={16} /><span>Source retained</span><strong>Confidence: high</strong></div>
+          <div className="trace-result"><Check size={16} /><span>{copy.sourceRetained}</span><strong>{copy.confidenceHigh}</strong></div>
         </div>
       </div>
     </div>

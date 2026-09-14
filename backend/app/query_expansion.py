@@ -20,7 +20,7 @@ _EXPANSIONS = [
      "traditional knowledge prior art"),
     (("classical", "ayurved"), "Section 3(p) patents act traditional knowledge exclusion"),
     (("patent",), "patentability India patent law"),
-    (("biological resource", "genetic resource", "biodivers", "medicinal plant", "herb", "extract", "provenance", "forest", "tribal"),
+    (("biological resource", "genetic resource", "biodivers", "medicinal plant", "extract", "provenance", "forest", "tribal"),
      "access and benefit sharing biological resources"),
     (("geographical indication", " gi "), "geographical indication registration"),
     (("nutraceutical", "food supplement", "dietary supplement"),

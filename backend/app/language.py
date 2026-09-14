@@ -20,17 +20,19 @@ only to help the TF-IDF retriever match on domain terms.
 import re
 
 _TELUGU_RANGE = re.compile(r"[\u0C00-\u0C7F]")
+_DEVANAGARI_RANGE = re.compile(r"[\u0900-\u097F]")
 
 
 def detect_language(text: str) -> str:
     """Detect input language from the query text itself.
 
-    Only Telugu vs. English is distinguished today (the two languages this
-    prototype's corpus/UI supports) — this is a targeted fix, not a general
-    language-ID model.
+    Telugu, Hindi, and English are distinguished by Unicode script. This is a
+    targeted detector, not a general language-ID model.
     """
     if text and _TELUGU_RANGE.search(text):
         return "te"
+    if text and _DEVANAGARI_RANGE.search(text):
+        return "hi"
     return "en"
 
 
@@ -51,6 +53,19 @@ TELUGU_TERM_MAP = {
     "సంప్రదాయ": "traditional",
 }
 
+HINDI_TERM_MAP = {
+    "पेटेंट": "patent",
+    "पारंपरिक ज्ञान": "traditional knowledge",
+    "आयुर्वेदिक": "Ayurvedic",
+    "आयुर्वेद": "Ayurveda",
+    "शास्त्रीय": "classical",
+    "फॉर्मूलेशन": "formulation",
+    "जैविक संसाधन": "biological resources",
+    "लाभ साझा करना": "access and benefit sharing",
+    "ग्रंथ": "text",
+    "पारंपरिक": "traditional",
+}
+
 
 def fallback_normalize(text: str) -> str:
     """Best-effort English gloss built by substring term substitution.
@@ -60,7 +75,8 @@ def fallback_normalize(text: str) -> str:
     silently zero out the TF-IDF tokenizer again.
     """
     out = text
-    for te_term, en_term in TELUGU_TERM_MAP.items():
-        out = out.replace(te_term, f" {en_term} ")
+    for term_map in (TELUGU_TERM_MAP, HINDI_TERM_MAP):
+        for source_term, en_term in term_map.items():
+            out = out.replace(source_term, f" {en_term} ")
     out = re.sub(r"[^\x00-\x7F]+", " ", out)
     return re.sub(r"\s+", " ", out).strip()

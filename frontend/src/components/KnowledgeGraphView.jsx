@@ -42,7 +42,7 @@ export default function KnowledgeGraphView({ copy }) {
   if (error) {
     return (
       <div className="data-stage p-8 text-center text-sm text-paper/60">
-        {copy?.graphEmpty || 'Knowledge graph data is unavailable from the backend right now.'}
+        {copy?.graphEmpty}
       </div>
     )
   }
@@ -56,8 +56,8 @@ export default function KnowledgeGraphView({ copy }) {
       <div className="flex items-center gap-2 mb-1">
         <Network size={16} className="text-gold-light" />
         <div>
-          <p className="section-kicker">How the answer is grounded</p>
-          <h3 className="font-serif text-xl text-green-dark">Explainability Graph</h3>
+          <p className="section-kicker">{copy.graphGrounding}</p>
+          <h3 className="font-serif text-xl text-green-dark">{copy.explainabilityGraph}</h3>
         </div>
       </div>
       <p className="text-xs text-paper/65 mb-5 max-w-xl">{graph.note}</p>
@@ -95,7 +95,7 @@ export default function KnowledgeGraphView({ copy }) {
                     dominantBaseline="middle"
                     y={1}
                   >
-                    {e.label}
+                    {copy.graphEdges?.[`${e.from}_${e.to}`] || e.label}
                   </text>
                 </g>
               </g>
@@ -127,7 +127,7 @@ export default function KnowledgeGraphView({ copy }) {
                   dominantBaseline="middle"
                   fontFamily="IBM Plex Sans, sans-serif"
                 >
-                  {n.label}
+                  {copy.graphNodes?.[n.id] || n.label}
                 </text>
               </g>
             )
@@ -136,11 +136,11 @@ export default function KnowledgeGraphView({ copy }) {
       </div>
 
       <div className="flex items-center gap-4 mt-4 pt-4 border-t border-hairline flex-wrap">
-        {[
-          { color: '#1F3B2C', label: 'Query context' },
-          { color: '#8F6A22', label: 'Regulatory structure' },
-          { color: '#A03E2A', label: 'Traditional knowledge' },
-          { color: '#2E5940', label: 'Authoritative source' },
+          {[
+          { color: '#1F3B2C', label: copy.graphLegend.query },
+          { color: '#8F6A22', label: copy.graphLegend.regulatory },
+          { color: '#A03E2A', label: copy.graphLegend.traditional },
+          { color: '#2E5940', label: copy.graphLegend.authoritative },
         ].map(({ color, label }) => (
           <span key={label} className="inline-flex items-center gap-1.5 text-xs text-paper/70">
             <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: color }} />

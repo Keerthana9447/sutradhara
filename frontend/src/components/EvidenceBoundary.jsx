@@ -17,7 +17,7 @@ export default function EvidenceBoundary({ result, copy, onEscalate }) {
 
       {translationFailed && (
         <p className="text-xs text-rust mt-3 ml-12">
-          Translation service unavailable right now — showing the English message.
+          {copy.translationUnavailableMessage}
         </p>
       )}
 
@@ -26,7 +26,7 @@ export default function EvidenceBoundary({ result, copy, onEscalate }) {
         <p className="text-sm text-ink/65">
           {result.classification?.needs_clarification
             ? result.classification.reason
-            : 'The retained evidence set was empty or its combined confidence fell below the safe-answer threshold — so the system is declining to answer rather than guess.'}
+            : copy.evidenceBoundaryReason}
         </p>
       </div>
 

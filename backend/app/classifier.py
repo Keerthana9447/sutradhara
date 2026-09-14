@@ -22,10 +22,11 @@ CATEGORIES = [
 
 _KEYWORDS = {
     "Classical / Generic Medicine": [
-        "classical", "traditional formulation", "authoritative text", "ancient text",
+        "classical", "traditional formulation", "authoritative text", "ancient text", "formulary",
         "charaka", "sushruta", "ashtanga", "shastra", "classical text", "generic",
         "traditional ayurvedic", "known formulation", "prior art", "triphala",
-        "medicinal plant", "forest region", "provenance", "tribal community",
+        "medicinal plant", "forest region", "provenance", "tribal community", "turmeric", "neem",
+        "geographical indication", "regional name", "traditionally made",
     ],
     "Patent / Proprietary Medicine": [
         "proprietary", "patent medicine", "brand", "my own formula", "own formulation",
@@ -85,6 +86,22 @@ def classify(query: str, confirmed_category: Optional[str] = None) -> Classifica
                 "classical text, which is treated as a new/non-classical drug for "
                 "regulatory purposes."
             ),
+            needs_clarification=False,
+        )
+
+    if any(term in q for term in ("functional food", "daily wellness", "food product")):
+        return ClassificationResult(
+            category="Ayurveda-Aahar / Nutraceutical",
+            confidence=0.85,
+            reason="The query describes a food or daily-wellness product rather than a medicinal formulation.",
+            needs_clarification=False,
+        )
+
+    if any(term in q for term in ("face pack", "skin brightening", "no therapeutic claim")):
+        return ClassificationResult(
+            category="Cosmetic",
+            confidence=0.85,
+            reason="The query describes a topical product for cosmetic use without a therapeutic claim.",
             needs_clarification=False,
         )
 

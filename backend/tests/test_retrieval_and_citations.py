@@ -133,3 +133,22 @@ def test_generated_answer_only_cites_sources_that_were_actually_retrieved():
 def test_corpus_has_been_expanded_to_the_requested_range():
     """20-40 verified sources, per the brief."""
     assert 20 <= len(retrieval._CORPUS) <= 40
+
+
+def test_requested_category_and_abstention_routes():
+    gi_query = "I want to sell my Ayurvedic product under a regional name tied to where it is traditionally made — do I need a Geographical Indication registration?"
+    gi_classification = classifier.classify(gi_query)
+    assert not gi_classification.needs_clarification
+    assert "Geographical Indications" in jurisdiction.route_areas(gi_query, gi_classification.category)
+
+    formulary = classifier.classify("A tablet made using a formulation and method described in the Ayurvedic Formulary of India")
+    nutraceutical = classifier.classify("A functional food product made from ashwagandha and turmeric marketed for daily wellness")
+    cosmetic = classifier.classify("A face pack made from neem and sandalwood, marketed for skin brightening with no therapeutic claim")
+    assert formulary.category == "Classical / Generic Medicine"
+    assert nutraceutical.category == "Ayurveda-Aahar / Nutraceutical"
+    assert cosmetic.category == "Cosmetic"
+
+    assert jurisdiction.has_unsupported_foreign_country(
+        "What export documentation does Vietnam require for herbal cosmetics?", "India"
+    )
+    assert not jurisdiction.has_unsupported_foreign_country(CLASSICAL_QUERY, "International")

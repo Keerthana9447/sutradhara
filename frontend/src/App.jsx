@@ -26,9 +26,9 @@ const CLARIFICATION_CATEGORIES = [
   'Cosmetic',
 ]
 
-function ResultSkeleton() {
+function ResultSkeleton({ copy }) {
   return (
-    <div className="space-y-4 animate-in" aria-label="Loading analysis">
+    <div className="space-y-4 animate-in" aria-label={copy.loadingAnalysis}>
       <div className="dossier-panel p-6"><div className="skeleton h-3 w-28 rounded mb-4" /><div className="skeleton h-6 w-2/3 rounded mb-3" /><div className="skeleton h-4 w-5/6 rounded" /></div>
       <div className="dossier-panel p-6"><div className="skeleton h-3 w-24 rounded mb-4" /><div className="skeleton h-4 w-full rounded mb-3" /><div className="skeleton h-4 w-5/6 rounded mb-3" /><div className="skeleton h-4 w-3/4 rounded" /></div>
       <div className="dossier-panel p-6"><div className="skeleton h-4 w-1/2 rounded" /></div>
@@ -106,7 +106,7 @@ export default function App() {
                 aria-pressed={lang === 'en'}
                 className={`px-3 py-1.5 text-xs font-medium transition-colors ${lang === 'en' ? 'bg-paper text-green' : 'text-paper/80 hover:text-paper'}`}
               >
-                English
+                {copy.languageEnglish}
               </button>
               <button
                 onClick={() => {
@@ -117,12 +117,23 @@ export default function App() {
                 aria-pressed={lang === 'te'}
                 className={`px-3 py-1.5 text-xs font-medium border-l border-paper/25 transition-colors ${lang === 'te' ? 'bg-paper text-green' : 'text-paper/80 hover:text-paper'}`}
               >
-                తెలుగు
+                {copy.languageTelugu}
+              </button>
+              <button
+                onClick={() => {
+                  if (lang === 'hi') return
+                  setLang('hi')
+                  if (result && !result.abstained) runAnalyze(lastConfirmedCategory, 'hi')
+                }}
+                aria-pressed={lang === 'hi'}
+                className={`px-3 py-1.5 text-xs font-medium border-l border-paper/25 transition-colors ${lang === 'hi' ? 'bg-paper text-green' : 'text-paper/80 hover:text-paper'}`}
+              >
+                {copy.languageHindi}
               </button>
             </div>
           </div>
         </div>
-        <nav className="max-w-6xl mx-auto px-4 sm:px-6 flex gap-2 text-sm overflow-x-auto" aria-label="Primary navigation">
+        <nav className="max-w-6xl mx-auto px-4 sm:px-6 flex gap-2 text-sm overflow-x-auto" aria-label={copy.primaryNavigation}>
           {NAV.map((t) => (
             <button
               key={t}
@@ -143,8 +154,8 @@ export default function App() {
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 lg:py-10">
         {tab === 'graph' && <KnowledgeGraphView copy={copy} />}
         {tab === 'eval' && <EvalDashboard copy={copy} />}
-        {tab === 'abs' && <ABSTool copy={copy} />}
-        {tab === 'tkdl' && <TKDLTool copy={copy} />}
+        {tab === 'abs' && <ABSTool copy={copy} language={lang} />}
+        {tab === 'tkdl' && <TKDLTool copy={copy} language={lang} />}
 
         {tab === 'analyze' && (
           <>
@@ -156,7 +167,7 @@ export default function App() {
                   <span className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-pale text-green"><Sparkles size={15} /></span>
                   <div>
                     <label htmlFor="sutradhara-query" className="block text-sm font-semibold text-green-dark">{copy.inputLabel}</label>
-                    <span className="text-xs text-ink/45">Source-grounded analysis across the selected jurisdiction</span>
+                    <span className="text-xs text-ink/45">{copy.analysisHelper}</span>
                   </div>
                 </div>
                 <JurisdictionSwitch value={jurisdiction} onChange={setJurisdiction} copy={copy} />
@@ -192,19 +203,19 @@ export default function App() {
               </div>
             )}
 
-            {loading && <ResultSkeleton />}
+            {loading && <ResultSkeleton copy={copy} />}
 
             {!loading && pendingClarification && (
               <div className="dossier-panel p-5 mb-6 border-gold/40 bg-gold-light/10 animate-in">
                 <p className="text-sm font-medium mb-3">{pendingClarification}</p>
                 <div className="flex gap-2 flex-wrap">
-                  {CLARIFICATION_CATEGORIES.map((cat) => (
+                  {CLARIFICATION_CATEGORIES.map((cat, index) => (
                     <button
                       key={cat}
                       onClick={() => runAnalyze(cat)}
                       className="text-xs border border-green/40 bg-paper px-3 py-1.5 rounded-md text-green hover:bg-green hover:text-paper transition-colors"
                     >
-                      {cat}
+                      {copy.clarificationCategories[index]}
                     </button>
                   ))}
                 </div>
@@ -216,7 +227,7 @@ export default function App() {
                 <div className="dossier-panel p-5 sm:p-6 border-l-4 border-l-green animate-in">
                   <span className="citation-marker inline-flex items-center gap-1.5 text-xs text-green/70">
                     <JurisdictionMark jurisdiction={jurisdiction} size={13} className="text-green/70" />
-                    JURISDICTION: {result.jurisdiction.toUpperCase()}
+                    {copy.jurisdictionPrefix}: {result.jurisdiction.toUpperCase()}
                     {result.input_language !== 'en' && (
                       <> · {copy.detectedLanguage}: {result.input_language.toUpperCase()}</>
                     )}
@@ -225,7 +236,7 @@ export default function App() {
                     <span className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-green-pale text-green shrink-0"><FileCheck2 size={18} /></span>
                     <div>
                       <h2 className="font-serif text-xl text-green-dark">{copy.classification}</h2>
-                      <p className="mt-1 text-lg font-semibold">{result.classification.category}</p>
+                      <p className="mt-1 text-lg font-semibold">{copy.classificationCategories?.[result.classification.category] || result.classification.category}</p>
                     </div>
                   </div>
                   <p className="text-sm text-ink/60 mt-1">{result.classification.reason}</p>
@@ -235,7 +246,7 @@ export default function App() {
                       <p className="text-xs uppercase tracking-wide text-ink/45 mb-1.5 font-medium">{copy.applicableAreas}</p>
                       <div className="flex gap-2 flex-wrap">
                         {result.applicable_areas.map((a) => (
-                          <span key={a} className="text-xs border border-green/15 bg-green-pale/60 text-green-dark px-2.5 py-1 rounded-md">{a}</span>
+                          <span key={a} className="text-xs border border-green/15 bg-green-pale/60 text-green-dark px-2.5 py-1 rounded-md">{copy.areaLabels?.[a] || a}</span>
                         ))}
                       </div>
                     </div>
@@ -251,13 +262,13 @@ export default function App() {
                         <div className="flex items-center gap-2"><BookOpen size={17} className="text-gold-dark" /><h3 className="font-serif text-lg">{copy.assessment}</h3></div>
                         {result.llm_paraphrased && (
                           <span className="citation-marker text-[10px] text-ink/40 border border-hairline px-2 py-0.5 rounded-full">
-                            phrased via Groq · citations verified
+                            {copy.paraphraseVerified}
                           </span>
                         )}
                       </div>
                       {!result.translation_available && result.answer_language !== 'en' && (
                         <p className="text-xs text-rust mb-2">
-                          Translation service unavailable right now — showing the English answer.
+                          {copy.translationUnavailableAnswer}
                         </p>
                       )}
                       <p className="text-sm leading-relaxed whitespace-pre-line text-ink/85">{result.answer}</p>
@@ -266,7 +277,7 @@ export default function App() {
                     {result.tk_pointer && (
                       <div className="dossier-panel p-5 border-gold/40 bg-gold-light/10 animate-in">
                         <p className="section-kicker mb-1.5 font-medium">
-                          Traditional Knowledge / Prior-Art Pointer
+                          {copy.tkPointer}
                         </p>
                         <p className="text-sm text-ink/75">{result.tk_pointer}</p>
                       </div>
@@ -275,13 +286,13 @@ export default function App() {
                     {result.abs_checklist && (
                       <div className="dossier-panel p-5 border-l-4 border-l-earth animate-in">
                         <p className="section-kicker text-ink/55 mb-2 font-medium flex items-center gap-2"><ShieldCheck size={14} className="text-earth" />
-                          Potential ABS Considerations
+                          {copy.absConsiderations}
                         </p>
                         <ul className="text-sm space-y-1 text-ink/75">
-                          <li>{result.abs_checklist.biological_resource_involved ? '☑' : '☐'} Biological resource involved</li>
-                          <li>{result.abs_checklist.provenance_identified ? '☑' : '☐'} Source/provenance identified</li>
-                          <li>{result.abs_checklist.abs_framework_identified ? '☑' : '☐'} Relevant ABS framework identified</li>
-                          <li>{result.abs_checklist.supporting_source_retrieved ? '☑' : '☐'} Supporting source retrieved</li>
+                          <li>{result.abs_checklist.biological_resource_involved ? '☑' : '☐'} {copy.absChecklist.biologicalResource}</li>
+                          <li>{result.abs_checklist.provenance_identified ? '☑' : '☐'} {copy.absChecklist.provenance}</li>
+                          <li>{result.abs_checklist.abs_framework_identified ? '☑' : '☐'} {copy.absChecklist.framework}</li>
+                          <li>{result.abs_checklist.supporting_source_retrieved ? '☑' : '☐'} {copy.absChecklist.source}</li>
                         </ul>
                         <p className="text-xs text-ink/50 mt-2">{result.abs_checklist.note}</p>
                       </div>
@@ -300,7 +311,7 @@ export default function App() {
                       </div>
                       <div className="grid gap-3">
                         {result.sources.map((s, i) => (
-                          <SourceCard key={s.id} source={s} index={i} />
+                          <SourceCard key={s.id} source={s} index={i} copy={copy} />
                         ))}
                       </div>
                     </div>
@@ -331,6 +342,7 @@ export default function App() {
 
       {showEscalate && result && (
         <EscalationModal
+          copy={copy}
           context={{
             query,
             category: result.classification?.category,

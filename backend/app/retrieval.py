@@ -108,6 +108,10 @@ def _try_init_embeddings() -> bool:
     """
     global _EMBED_MODEL, _FAISS_INDEX_BY_JUR, _JUR_DOC_IDS
 
+    if os.getenv("SUTRADHARA_DISABLE_EMBEDDINGS") == "1":
+        logger.info("Embeddings backend disabled by SUTRADHARA_DISABLE_EMBEDDINGS. Using TF-IDF.")
+        return False
+
     try:
         import faiss
         from sentence_transformers import SentenceTransformer

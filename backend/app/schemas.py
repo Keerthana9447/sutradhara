@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 class AnalyzeRequest(BaseModel):
     query: str
     jurisdiction: str = Field(..., description="'India' or 'International'")
-    language: str = Field(default="en", description="'en' or 'te'")
+    language: str = Field(default="en", description="'en', 'te', or 'hi'")
     # Optional pre-confirmed classification (from the clarification step)
     confirmed_category: Optional[str] = None
 

@@ -89,14 +89,14 @@ def analyze(req: AnalyzeRequest):
         )
 
     areas = jurisdiction.route_areas(retrieval_query, classification.category)
-    retrieved = retrieval.retrieve(query_variants, jur, areas, top_k=5)
+    retrieved = [] if jurisdiction.has_unsupported_foreign_country(req.query, jur) else retrieval.retrieve(query_variants, jur, areas, top_k=5)
 
     conf_score, conf_label, breakdown = confidence.score(retrieved, classification.confidence)
     abstained = confidence.should_abstain(conf_score, retrieved)
     abs_checklist = answer.build_abs_checklist(retrieval_query, retrieved)
     tk_pointer = answer.build_tk_pointer(classification.category, jur)
 
-    lang = req.language if req.language in ("en", "te") else "en"
+    lang = req.language if req.language in ("en", "te", "hi") else "en"
 
     logger.info(
         "INPUT_LANGUAGE=%s RETRIEVAL_LANGUAGE=en ORIGINAL=%r NORMALIZED=%r "

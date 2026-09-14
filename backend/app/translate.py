@@ -85,8 +85,8 @@ def _cache_put(key: str, value: str) -> None:
 # LanguageNotSupportedException on bare "en"/"te" -- this is NOT a network
 # problem, it fails the same way with a perfect connection, so it needs its
 # own mapping rather than reusing _LANG_MAP.
-_LANG_MAP = {"te": "te", "en": "en"}
-_MYMEMORY_LANG_MAP = {"te": "te-IN", "en": "en-US"}
+_LANG_MAP = {"te": "te", "hi": "hi", "en": "en"}
+_MYMEMORY_LANG_MAP = {"te": "te-IN", "hi": "hi-IN", "en": "en-US"}
 
 # Each free provider enforces its OWN hard per-request character limit,
 # independent of rate-limiting/network issues:

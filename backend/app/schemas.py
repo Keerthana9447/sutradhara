@@ -80,8 +80,8 @@ class AnalyzeResponse(BaseModel):
     # floor — never padded with a weak match.
     tk_similarity: Optional[List[dict]] = None
     # Present only when use_connector_id was set on the request AND the
-    # connector is active. Clearly tagged as a simulated/prototype hit — see
-    # app/connectors.py docstring for exactly what is and isn't real here.
+    # connector is active. Live provider results are kept separate from the
+    # legal corpus sources and are explicitly marked as live or simulated.
     connector_source_used: Optional[dict] = None
     # Live, per-query explainability graph — built from what was ACTUALLY
     # retrieved for THIS query (see app/graph.py), distinct from the static
@@ -89,6 +89,97 @@ class AnalyzeResponse(BaseModel):
     # POST /api/graph/reason. None only if graph construction itself failed
     # (never fabricated as a fallback).
     dynamic_graph: Optional[dict] = None
+    # Non-blocking "always-current law" caveat (see app/corpus_freshness.py):
+    # set only when one or more of the CITED sources for this answer have
+    # not been re-verified against their authoritative source in over
+    # SUTRADHARA_STALE_DAYS days. None means every cited source is within
+    # the freshness window — never fabricated, never suppressed.
+    stale_sources_warning: Optional[str] = None
+
+
+# --------------------------------------------------------------------------
+# Live official registry lookup — see app/registry_lookup.py
+# --------------------------------------------------------------------------
+class RegistryLookupRequest(BaseModel):
+    jurisdiction: str = Field(..., description="'India' or 'International'")
+    keyword: str = Field(..., description="Search term, e.g. a formulation or product name")
+    registry: str = Field(default="patents", description="'patents' | 'trademarks' | 'gi' | 'abs' (India only; International is patents-only)")
+    limit: int = Field(default=5, ge=1, le=20)
+
+
+# --------------------------------------------------------------------------
+# Privacy / data-governance rights — see app/privacy.py
+# --------------------------------------------------------------------------
+class PrivacyLookupRequest(BaseModel):
+    query_text: Optional[str] = Field(default=None, description="The exact question you previously typed")
+    contact_email: Optional[str] = Field(default=None, description="The email you supplied when escalating to a human")
+
+
+# --- Consent Manager reference implementation (see app/privacy.py) --------
+class ConsentRequestRequest(BaseModel):
+    data_principal_ref: str = Field(..., description="How you identify yourself, e.g. the email you use for escalation")
+    purpose: str = Field(..., description="Plain-language purpose this consent covers")
+    data_categories: List[str] = Field(..., description="Categories of data this consent covers, e.g. ['query_text']")
+    expires_in_days: Optional[int] = Field(default=None, description="Optional expiry; omit for no expiry")
+
+
+class ConsentIdRequest(BaseModel):
+    consent_id: str
+
+
+class ConsentInfo(BaseModel):
+    consent_id: str
+    data_principal_ref: str
+    purpose: str
+    data_categories: List[str]
+    data_fiduciary: str
+    status: str
+    requested_at: str
+    granted_at: Optional[str] = None
+    revoked_at: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+# --- DPIA / breach / ROPA (see app/privacy.py) -----------------------------
+class DPIARequest(BaseModel):
+    processing_activity: str
+    risk_level: str = Field(..., description="'low' | 'medium' | 'high'")
+    reviewer: Optional[str] = None
+    mitigations: Optional[str] = None
+
+
+class BreachReportRequest(BaseModel):
+    description: str
+    affected_categories: Optional[List[str]] = None
+    severity: str = Field(default="unknown", description="'low' | 'medium' | 'high' | 'unknown'")
+
+
+class BreachIdRequest(BaseModel):
+    breach_id: str
+
+
+class ProcessingActivityRequest(BaseModel):
+    purpose: str
+    data_categories: List[str]
+    legal_basis: str
+    retention_period_days: Optional[int] = None
+
+
+# --- Cross-border transfer check (see app/privacy.py) ----------------------
+class CrossBorderCheckRequest(BaseModel):
+    destination_country: str
+    purpose: Optional[str] = None
+    data_categories: Optional[List[str]] = None
+
+
+# --- Corpus auto-refresh (see app/corpus_freshness.py) ----------------------
+class CorpusRefreshRequest(BaseModel):
+    doc_ids: Optional[List[str]] = Field(default=None, description="Restrict to these corpus document ids; omit for all")
+
+
+class CorpusRefreshApproveRequest(BaseModel):
+    doc_id: str
+    reviewer: str = Field(..., description="Name/identifier of the human approving this refresh")
 
 
 class EscalateRequest(BaseModel):
@@ -120,8 +211,8 @@ class PostureRequest(BaseModel):
 # Paid-subscription connector (consent-logged, user-linked) — see connectors.py
 # --------------------------------------------------------------------------
 class ConnectorLinkRequest(BaseModel):
-    provider: str = Field(..., description="Name of the user's own paid IP-data provider, e.g. 'PatSeer', 'Derwent Innovation'")
-    api_key: str = Field(..., description="The user's own subscription API key. Never stored or logged in full — see connectors.py")
+    provider: str = Field(..., description="Provider name; 'USPTO PatentsView' enables the live US-patent adapter")
+    api_key: str = Field(..., description="Provider API key; PatentsView keys are encrypted at rest and never returned")
     scope: str = Field(default="patent_search", description="What this connector may be used for")
     contact_email: Optional[str] = None
 
@@ -173,3 +264,54 @@ class TTSRequest(BaseModel):
 
 class TTSResponse(BaseModel):
     audio_base64: str
+
+
+# --------------------------------------------------------------------------
+# Auth — Sign Up / Sign In
+# --------------------------------------------------------------------------
+class SignUpRequest(BaseModel):
+    email: str = Field(..., description="User email address")
+    name: str = Field(..., description="Display name")
+    password: str = Field(..., min_length=6, description="Password (min 6 chars)")
+
+
+class SignInRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UserInfo(BaseModel):
+    id: int
+    email: str
+    name: str
+
+
+class AuthResponse(BaseModel):
+    user: UserInfo
+    token: str  # opaque session token stored client-side
+
+
+# --------------------------------------------------------------------------
+# Chat history
+# --------------------------------------------------------------------------
+class ChatSessionCreate(BaseModel):
+    user_id: int
+    title: Optional[str] = "New conversation"
+
+
+class ChatSessionRename(BaseModel):
+    user_id: int
+    title: str
+
+
+class ChatMessageAdd(BaseModel):
+    session_id: int
+    user_id: int
+    role: str = Field(..., description="'user' | 'assistant'")
+    content: str
+
+
+class SessionAnalyzeRequest(AnalyzeRequest):
+    """Extends the standard analyze request with session tracking."""
+    session_id: Optional[int] = None
+    user_id: Optional[int] = None

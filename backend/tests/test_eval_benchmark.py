@@ -13,6 +13,12 @@ from app.main import app  # noqa: E402
 from app import eval_runner  # noqa: E402
 
 _MIN_ACCEPTABLE_ACCURACY = 0.85
+_SUPPORTED_LANGUAGES = {"en", "hi", "te", "ta", "ml", "sa"}
+
+
+def test_labeled_dataset_covers_all_supported_languages():
+    languages = {item.get("language", "en") for item in eval_runner._load_dataset()}
+    assert _SUPPORTED_LANGUAGES <= languages
 
 
 def test_hard_invariants_are_zero():

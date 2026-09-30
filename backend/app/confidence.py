@@ -15,6 +15,7 @@ rather than answer from the LLM's own (unverified) knowledge.
 from typing import List, Dict, Any, Tuple
 
 ABSTAIN_THRESHOLD = 0.40
+MIN_TOP_RELEVANCE_FOR_ANSWER = 0.25
 
 _AUTHORITY_WEIGHT = {
     "Statute": 1.0,
@@ -77,4 +78,6 @@ def score(
 
 
 def should_abstain(confidence: float, sources: List[Dict[str, Any]]) -> bool:
-    return (not sources) or confidence < ABSTAIN_THRESHOLD
+    if not sources or confidence < ABSTAIN_THRESHOLD:
+        return True
+    return max(source["relevance_score"] for source in sources) < MIN_TOP_RELEVANCE_FOR_ANSWER

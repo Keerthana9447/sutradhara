@@ -245,5 +245,109 @@
       "INTL-MADRID-1989"
     ],
     "notes": "Jurisdiction-switch pair of EV-19 — must cite Madrid Protocol, not the Indian Trade Marks Act."
+  },
+  {
+    "id": "EV-21",
+    "query": "I want to export a classical Ayurvedic herbal tablet from an authoritative text to the EU; what is the traditional herbal medicinal product registration route?",
+    "jurisdiction": "International",
+    "language": "en",
+    "expect_clarification": false,
+    "expect_abstain": false,
+    "expected_category": "Classical / Generic Medicine",
+    "expected_source_ids": [
+      "INTL-EU-THMPD-2004"
+    ],
+    "notes": "Export-market regime: EU traditional-use registration (Directive 2004/24/EC)."
+  },
+  {
+    "id": "EV-22",
+    "query": "Can I sell my Ayurvedic herbal capsules in the United States as a dietary supplement under DSHEA?",
+    "jurisdiction": "International",
+    "language": "en",
+    "expect_clarification": false,
+    "expect_abstain": false,
+    "expected_category": "Ayurveda-Aahar / Nutraceutical",
+    "expected_source_ids": [
+      "INTL-US-DSHEA-1994"
+    ],
+    "notes": "Export-market regime: US DSHEA / FDA dietary supplements."
+  },
+  {
+    "id": "EV-23",
+    "query": "What Nagoya due diligence duties apply when a company in the EU develops a product from Indian medicinal plants?",
+    "jurisdiction": "International",
+    "language": "en",
+    "expect_clarification": false,
+    "expect_abstain": false,
+    "expected_category": "Classical / Generic Medicine",
+    "expected_source_ids": [
+      "INTL-EU-NAGOYA-REG-511-2014"
+    ],
+    "notes": "EU user-side ABS compliance (Regulation 511/2014)."
+  },
+  {
+    "id": "EV-24",
+    "query": "Can I protect my proprietary Ayurvedic extraction process as a trade secret in India instead of patenting it?",
+    "jurisdiction": "India",
+    "language": "en",
+    "expect_clarification": false,
+    "expect_abstain": false,
+    "expected_category": "Patent / Proprietary Medicine",
+    "expected_source_ids": [
+      "IN-TRADESECRET-COMMONLAW"
+    ],
+    "notes": "Trade secrets previously had zero corpus documents and would abstain; now covered by common-law/contract entry."
+  },
+  {
+    "id": "EV-25",
+    "query": "What is the international standard for protecting undisclosed information or trade secrets under TRIPS?",
+    "jurisdiction": "International",
+    "language": "en",
+    "expect_clarification": false,
+    "expect_abstain": false,
+    "expected_category": "Classical / Generic Medicine",
+    "expected_source_ids": [
+      "INTL-TRIPS-39"
+    ],
+    "notes": "TRIPS Article 39 three-part undisclosed-information test."
+  },
+  {
+    "id": "EV-26",
+    "query": "எனது கிராமத்தில் மட்டும் விளையும் ஒரு தனித்துவமான மருத்துவ மூலிகைக்கு புவிசார் குறியீடு (GI) பதிவு செய்ய முடியுமா?",
+    "jurisdiction": "India",
+    "language": "ta",
+    "expect_clarification": false,
+    "expect_abstain": false,
+    "expected_category": "Classical / Generic Medicine",
+    "expected_source_ids": [
+      "IN-GI-1999"
+    ],
+    "notes": "Tamil: 'Can I register a Geographical Indication for a unique medicinal herb grown only in my village?' Adds Tamil benchmark coverage (previously zero). Correctness depends on live Bhashini/Sarvam translation, which this sandbox cannot exercise (see translate.py's mocked-HTTP tests) — the English gloss's category/routing/retrieval was independently verified against the live corpus/classifier before this item was added."
+  },
+  {
+    "id": "EV-27",
+    "query": "എന്റെ ആയുർവേദ ഉൽപ്പന്നത്തിന്റെ ബ്രാൻഡ് നാമം ട്രേഡ്മാർക്കായി രജിസ്റ്റർ ചെയ്യാൻ കഴിയുമോ?",
+    "jurisdiction": "India",
+    "language": "ml",
+    "expect_clarification": false,
+    "expect_abstain": false,
+    "expected_category": "Patent / Proprietary Medicine",
+    "expected_source_ids": [
+      "IN-TM-1999"
+    ],
+    "notes": "Malayalam: 'Can I register my Ayurvedic product's brand name as a trademark?' Adds Malayalam benchmark coverage (previously zero). Same live-translation caveat as EV-26."
+  },
+  {
+    "id": "EV-28",
+    "query": "किं मम औषधवनस्पत्युपयोगाय राष्ट्रियजैवविविधताप्राधिकरणस्य अनुमतिः आवश्यका?",
+    "jurisdiction": "India",
+    "language": "sa",
+    "expect_clarification": false,
+    "expect_abstain": false,
+    "expected_category": "Classical / Generic Medicine",
+    "expected_source_ids": [
+      "IN-BDA-2002"
+    ],
+    "notes": "Sanskrit: 'Is the National Biodiversity Authority's permission necessary for my use of the medicinal plant?' Adds Sanskrit benchmark coverage (previously zero). 'National Biodiversity Authority' has no classical precedent, so this is a best-effort modern/technical Sanskrit construction — should be reviewed by a Sanskrit speaker before being treated as authoritative benchmark text. Same live-translation caveat as EV-26."
   }
 ]

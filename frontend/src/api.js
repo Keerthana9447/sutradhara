@@ -1,9 +1,32 @@
-const BASE = '/api'
+// Local dev: Vite proxies /api to FastAPI.
+// Production: set VITE_API_URL to the Render backend URL.
+const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+const BASE = `${API_ORIGIN}/api`
+
+// The backend derives who you are from this Bearer token, never from a
+// user_id in the request. Attached ONLY to the account-scoped routes, so
+// unrelated calls (translation, speech, retrieval) are sent exactly as before.
+const AUTH_PATHS = ['/auth/signout', '/chat/', '/analyze/session', '/privacy/account']
+function authHeaders(path) {
+  if (!AUTH_PATHS.some((p) => path.startsWith(p))) return {}
+  try {
+    const raw = localStorage.getItem('sutradhara_auth')
+    const token = raw ? JSON.parse(raw).token : null
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  } catch {
+    return {}
+  }
+}
+
+async function jsonOrThrow(res, path) {
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`)
+  return res.json()
+}
 
 async function post(path, body) {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(path) },
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`${path} failed: ${res.status}`)
@@ -11,7 +34,7 @@ async function post(path, body) {
 }
 
 async function get(path) {
-  const res = await fetch(`${BASE}${path}`)
+  const res = await fetch(`${BASE}${path}`, { headers: authHeaders(path) })
   if (!res.ok) throw new Error(`${path} failed: ${res.status}`)
   return res.json()
 }
@@ -39,6 +62,7 @@ async function downloadPosturePdf(body) {
 
 export const api = {
   analyze: (payload) => post('/analyze', payload),
+  analyzeSession: (payload) => post('/analyze/session', payload),
   graph: () => get('/graph'),
   graphReason: (payload) => post('/graph/reason', payload),
   escalate: (payload) => post('/escalate', payload),
@@ -53,4 +77,35 @@ export const api = {
   connectorUsage: (id) => get(`/connectors/${id}/usage`),
   transcribeAudio: (payload) => post('/asr/transcribe', payload),
   synthesizeSpeech: (payload) => post('/tts/synthesize', payload),
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  signUp: (payload) => post('/auth/signup', payload),
+  signIn: (payload) => post('/auth/signin', payload),
+  signOut: () => post('/auth/signout', {}),
+
+  // ── Chat history ──────────────────────────────────────────────────────────
+  createChatSession: (userId, title) =>
+    post('/chat/sessions', { user_id: userId, title }),
+  getChatSessions: (userId) => get(`/chat/sessions/${userId}`),
+  getChatMessages: (sessionId, userId) =>
+    get(`/chat/sessions/${sessionId}/messages?user_id=${userId}`),
+  renameChatSession: (sessionId, userId, title) =>
+    fetch(`${BASE}/chat/sessions/${sessionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders('/chat/') },
+      body: JSON.stringify({ user_id: userId, title }),
+    }).then((r) => jsonOrThrow(r, '/chat/sessions')),
+  deleteChatSession: (sessionId, userId) =>
+    fetch(`${BASE}/chat/sessions/${sessionId}?user_id=${userId}`, {
+      method: 'DELETE',
+      headers: authHeaders('/chat/'),
+    }).then((r) => jsonOrThrow(r, '/chat/sessions')),
+
+  // ── DPDP rights over your own account data ────────────────────────────────
+  exportAccount: () => get('/privacy/account/export'),
+  deleteAccount: () =>
+    fetch(`${BASE}/privacy/account`, {
+      method: 'DELETE',
+      headers: authHeaders('/privacy/account'),
+    }).then((r) => jsonOrThrow(r, '/privacy/account')),
 }

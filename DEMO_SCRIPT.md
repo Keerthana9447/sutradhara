@@ -166,15 +166,12 @@ documents?"**
 > Give the answer in §5 of `LEGAL_CONTENT_REVIEW.md` verbatim in spirit —
 > honest, specific, points at the traceability as the mitigation.
 
-**"What happens if Bhashini or the paid-subscription connector doesn't work
-in production?"**
-> "Each one fails safe to something real, never to a crash or a fabricated
-> answer: Bhashini falls back to Google Translate, then MyMemory, then an
-> offline glossary; the paid-connector lifecycle — link, consent, use,
-> revoke — is fully functional even though we don't have a real commercial
-> subscription to call in a demo, so it returns one clearly labeled
-> simulated result instead of pretending to reach a provider we're not
-> actually connected to."
+**"What happens if Bhashini or a source connector doesn't work in production?"**
+> "The app reports provider failures explicitly. The PatentsView connector
+> makes a real US-patent API call when configured, and never substitutes a
+> fabricated record if the request fails. Its results remain separate from
+> legal citations. Other providers are labeled simulated until their
+> provider-specific APIs are integrated."
 
 **"How do you know your confidence score means anything?"**
 > "It's five named, inspectable signals — retrieval relevance, source count,

@@ -24,6 +24,8 @@ except ImportError:
 
 def _query_neo4j_graph(query: str, category: str, jurisdiction_name: str) -> Optional[Dict[str, Any]]:
     """Try querying live Neo4j database if configured."""
+    if os.getenv("SUTRADHARA_DISABLE_NEO4J") == "1":
+        return None
     if not _NEO4J_AVAILABLE:
         return None
     uri = os.environ.get("NEO4J_URI")
@@ -37,10 +39,12 @@ def _query_neo4j_graph(query: str, category: str, jurisdiction_name: str) -> Opt
         driver = GraphDatabase.driver(uri, auth=(user, password))
         with driver.session() as session:
             cypher = """
-            MATCH (c:ProductCategory {name: $category})-[:relevant_to]->(r:IPRegime)-[:governed_by]->(l:Law)-[:contains]->(p:Provision)-[:supported_by]->(s:Source)
+            MATCH (c:ProductCategory {name: $category})-[:relevant_to]->(r:IPRegime)
+                  -[:governed_by]->(l:Law)-[:contains]->(p:Provision)
+                  -[:supported_by]->(s:Source {jurisdiction: $jurisdiction})
             RETURN c, r, l, p, s LIMIT 10
             """
-            result = session.run(cypher, category=category)
+            result = session.run(cypher, category=category, jurisdiction=jurisdiction_name)
             records = list(result)
             if not records:
                 driver.close()

@@ -43,6 +43,15 @@ html, body {
   min-width: 320px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+}
+
+body { overflow-x: hidden; }
+
+/* Better tap behaviour on mobile — removes 300ms delay without
+   disabling pinch-to-zoom (touch-action: manipulation). */
+button, a, [role='button'], input, textarea, select {
+  touch-action: manipulation;
 }
 
 /* Manuscript ground: laid-paper ruling, a faint vertical chain line, and a
@@ -592,6 +601,148 @@ select:focus-visible, a:focus-visible, [tabindex]:focus-visible {
   .thread { padding: 1.25rem; }
   .eval-empty-dashboard { gap: 1.5rem; }
   .tool-empty { flex-direction: column; align-items: flex-start; }
+}
+
+/* --------------------------------------------------------------------------
+   Mobile responsive overrides
+   -------------------------------------------------------------------------- */
+
+/* Keep the signed-in shell usable on tablets: the history rail becomes a
+   compact drawer instead of permanently consuming the reading column. */
+@media (max-width: 767px) {
+  .app-shell { min-height: 100dvh; }
+  .chat-history {
+    width: 2.5rem;
+    overflow: visible;
+    z-index: 30;
+  }
+  .chat-history.chat-history--expanded {
+    width: min(80vw, 16rem);
+    position: absolute;
+    inset: 0 auto 0 0;
+    box-shadow: 10px 0 24px rgba(20, 42, 31, 0.14);
+  }
+  .chat-history--collapsed > :not(button) {
+    display: none;
+  }
+  .chat-history .absolute {
+    right: -0.75rem;
+  }
+  .app-main {
+    width: calc(100% - 2.5rem);
+    padding-left: clamp(0.75rem, 4vw, 1.5rem);
+    padding-right: clamp(0.75rem, 4vw, 1.5rem);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .header-inner { gap: 0.75rem; }
+  .header-inner > div:last-child { min-width: 0; }
+  .lang-scroll { max-width: 46vw; }
+  .nav-tabs button { padding-inline: 0.65rem; }
+  .data-stage, .hero-stage { border-radius: 8px; }
+}
+
+@media (min-width: 1280px) {
+  .app-main { padding-left: 2rem; padding-right: 2rem; }
+}
+
+/* === Header & language selector === */
+@media (max-width: 767px) {
+  /* Stack header: branding on top, language bar below */
+  .header-inner { flex-direction: column; align-items: stretch !important; gap: 0.5rem; }
+  .header-inner > div:first-child { justify-content: center; }
+  .header-inner > div:last-child { justify-content: center; min-width: 0; }
+  .header-inner .lang-scroll { max-width: 100%; }
+  .header-inner .border-l { border-left: 0; padding-left: 0; }
+}
+
+@media (max-width: 480px) {
+  .header-inner { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  .header-inner > div:last-child { flex-wrap: wrap; }
+  .header-inner > div:last-child > .flex.items-center { max-width: 100%; }
+  .header-inner > div:last-child > .flex.items-center span { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* Language selector: always horizontally scrollable on small screens */
+.lang-scroll {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge */
+}
+.lang-scroll::-webkit-scrollbar { display: none; }
+
+/* Ensure each language button has a comfortable tap target */
+@media (max-width: 640px) {
+  .lang-scroll button { min-width: 44px; min-height: 36px; font-size: 0.7rem; padding: 0.4rem 0.55rem; }
+}
+
+/* === Navigation tabs === */
+@media (max-width: 640px) {
+  .nav-tabs { gap: 0; }
+  .nav-tabs button { font-size: 0.72rem; padding: 0.55rem 0.5rem; gap: 0.3rem; }
+  .nav-tabs button svg { width: 12px; height: 12px; }
+  .nav-tabs { padding-left: 0.75rem; padding-right: 0.75rem; }
+}
+
+/* Scrollbar fade-hint: a subtle gradient so the user notices
+   horizontal scroll is available. */
+.scroll-hint {
+  position: relative;
+}
+.scroll-hint::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 24px;
+  background: linear-gradient(270deg, var(--green-deepest), transparent);
+  pointer-events: none;
+  border-radius: 0 6px 6px 0;
+}
+
+/* === Hero section === */
+@media (max-width: 480px) {
+  .hero-title { font-size: 2.4rem !important; }
+  .hero-lede { font-size: 0.9rem !important; }
+}
+
+/* === Confidence breakdown factors === */
+@media (max-width: 480px) {
+  .confidence-factor-label { width: auto !important; min-width: 90px; flex-shrink: 1 !important; }
+  .confidence-factor-row { flex-wrap: wrap; gap: 0.3rem !important; }
+}
+
+/* === Knowledge graph === */
+.graph-scroll-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.graph-scroll-container::-webkit-scrollbar { height: 6px; }
+.graph-scroll-container::-webkit-scrollbar-thumb { background: #466652; border-radius: 4px; }
+
+/* === Eval metric cards === */
+@media (max-width: 480px) {
+  .eval-metric-card { padding: 0.75rem; }
+  .eval-metric-card .font-serif { font-size: 1.75rem; }
+}
+
+/* === General mobile fixes === */
+@media (max-width: 640px) {
+  /* Make sure long text in result panels doesn't overflow */
+  .max-w-\[72ch\] { max-width: 100%; }
+  .max-w-\[70ch\] { max-width: 100%; }
+  .max-w-\[68ch\] { max-width: 100%; }
+
+  /* Tool surface: reduce left border accent padding for mobile */
+  .tool-surface { padding-left: 0.75rem; border-left-width: 3px; }
+
+  /* Reduce main content vertical padding */
+  .mobile-py { padding-top: 1.25rem; padding-bottom: 1.25rem; }
+  .data-stage { padding: 1rem; }
+  .hero-stage { margin-bottom: 1.5rem; }
+  .eval-empty-dashboard { min-height: 0; }
 }
 
 /* --------------------------------------------------------------------------

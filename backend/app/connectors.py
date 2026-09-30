@@ -1,20 +1,19 @@
 """
-Paid-subscription connector — consent-logged, user-linked.
+Consent-logged, user-linked source connectors.
 
 The problem statement's own wording: the assistant should facilitate access
 to authoritative sources, using "free official databases directly and the
 user's own paid subscriptions only with explicit, logged permission." Most
-teams building this problem statement will miss that clause entirely (it's
-one sentence in a long paragraph) and only wire up the free corpus. This
-module is the structural machinery for the other half:
+teams building this problem statement will miss that clause entirely and
+only wire up the free corpus. The first live adapter here is USPTO
+PatentsView (a free US-patent API); other providers stay labeled simulated
+until their provider-specific APIs are implemented.
 
   1. link_connector()   — the user pastes their OWN paid provider's API key
-     (e.g. a commercial patent-search subscription). We never store the raw
-     key: only a SHA-256 hash (for future verification, never reversed) and
-     a 4-character fingerprint (for the user to visually confirm which key
-     is linked, without exposing the rest). The link event itself is the
-     "explicit... permission" — logged with a timestamp, provider name, and
-     scope.
+     (or a PatentsView API key). Raw keys are never stored. A one-way
+     SHA-256 hash and four-character fingerprint are kept for consent and
+     display; the supported live adapter's credential is separately
+     encrypted at rest using CONNECTOR_ENCRYPTION_KEY.
   2. use_connector()    — every actual USE of a linked connector, on a
      specific query, is a separate logged event. Nothing is used silently
      just because a connector exists; the caller must pass
@@ -24,26 +23,43 @@ module is the structural machinery for the other half:
      itself logged (revoked_at), and a revoked connector can never be used
      again even if the id is replayed.
 
-HONESTY NOTE — what this prototype does NOT do: it does not call a real
-commercial patent/trademark database. There is no such subscription
-available to test against in this environment, and every real provider has
-its own bespoke API. What use_connector() returns is a single, clearly
-labeled placeholder record (source_type = "Paid Subscription (User-Provided,
-Simulated)") showing exactly where and how a real provider's response would
-be merged into the retrieved-sources list. The consent/link/use/revoke
-lifecycle around it, however, is fully real and functional — that lifecycle,
-not the mocked data, is the actual point of this feature.
+PatentsView is a real live API call when enabled and its records are
+returned separately from corpus citations. No fetched patent is treated as
+legal advice or as a legal source in the answer. Other provider names still
+return a clearly labeled simulated result.
 """
 import datetime
 import hashlib
+import os
 import secrets
 from typing import Any, Dict, List, Optional
 
-from . import db
+from . import db, registry_lookup
+
+_PATENTSVIEW_PROVIDERS = {"patentsview", "uspto patentsview"}
+
+
+class ConnectorConfigurationError(RuntimeError):
+    """The connector cannot run because required server configuration is absent."""
+
+
+def _fernet():
+    key = os.getenv("CONNECTOR_ENCRYPTION_KEY")
+    if not key:
+        raise ConnectorConfigurationError(
+            "CONNECTOR_ENCRYPTION_KEY must be configured before linking a live connector."
+        )
+    try:
+        from cryptography.fernet import Fernet
+        return Fernet(key.encode("ascii"))
+    except (ImportError, ValueError, UnicodeEncodeError) as exc:
+        raise ConnectorConfigurationError(
+            "CONNECTOR_ENCRYPTION_KEY must be a valid Fernet key and cryptography must be installed."
+        ) from exc
 
 
 def _fingerprint(api_key: str) -> str:
-    return api_key[-4:] if len(api_key) >= 4 else api_key
+    return api_key[-4:] if len(api_key) > 4 else "****"
 
 
 def _hash_key(api_key: str) -> str:
@@ -55,23 +71,28 @@ def link_connector(provider: str, api_key: str, scope: str = "patent_search",
     if not provider.strip() or not api_key.strip():
         raise ValueError("provider and api_key are required")
 
+    provider_name = provider.strip()
+    key_ciphertext = None
+    if provider_name.casefold() in _PATENTSVIEW_PROVIDERS:
+        key_ciphertext = _fernet().encrypt(api_key.encode("utf-8")).decode("ascii")
+
     connector_id = f"conn_{secrets.token_hex(8)}"
     now = datetime.datetime.utcnow().isoformat()
 
     conn = db.get_conn()
     conn.execute(
         "INSERT INTO connector_consent "
-        "(connector_id, provider, scope, key_fingerprint, key_hash, contact_email, status, linked_at, revoked_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, 'active', ?, NULL)",
-        (connector_id, provider.strip(), scope.strip(), _fingerprint(api_key), _hash_key(api_key),
-         contact_email, now),
+        "(connector_id, provider, scope, key_fingerprint, key_hash, key_ciphertext, contact_email, status, linked_at, revoked_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, NULL)",
+        (connector_id, provider_name, scope.strip(), _fingerprint(api_key), _hash_key(api_key),
+         key_ciphertext, contact_email, now),
     )
     conn.commit()
     conn.close()
 
     return {
         "connector_id": connector_id,
-        "provider": provider.strip(),
+        "provider": provider_name,
         "scope": scope.strip(),
         "status": "active",
         "linked_at": now,
@@ -102,12 +123,25 @@ def revoke_connector(connector_id: str) -> bool:
 def get_connector(connector_id: str) -> Optional[Dict[str, Any]]:
     conn = db.get_conn()
     row = conn.execute(
-        "SELECT * FROM connector_consent WHERE connector_id = ?", (connector_id,)
+        "SELECT connector_id, provider, scope, key_fingerprint, contact_email, "
+        "status, linked_at, revoked_at FROM connector_consent WHERE connector_id = ?",
+        (connector_id,),
     ).fetchone()
     conn.close()
     if row is None:
         return None
     return dict(row)
+
+
+def _get_connector_for_use(connector_id: str) -> Optional[Dict[str, Any]]:
+    conn = db.get_conn()
+    row = conn.execute(
+        "SELECT connector_id, provider, scope, status, key_ciphertext "
+        "FROM connector_consent WHERE connector_id = ?",
+        (connector_id,),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row is not None else None
 
 
 def list_connectors() -> List[Dict[str, Any]]:
@@ -122,11 +156,11 @@ def list_connectors() -> List[Dict[str, Any]]:
 
 def use_connector(connector_id: str, query: str) -> Optional[Dict[str, Any]]:
     """
-    Logs one use-event and returns a simulated paid-source hit, or None if
-    the connector doesn't exist or has been revoked (fails closed — a
-    revoked connector never silently keeps working).
+    Logs one use-event and fetches live PatentsView records for its supported
+    adapter. Other providers remain explicitly simulated until their APIs
+    have provider-specific integrations.
     """
-    connector = get_connector(connector_id)
+    connector = _get_connector_for_use(connector_id)
     if connector is None or connector["status"] != "active":
         return None
 
@@ -138,10 +172,55 @@ def use_connector(connector_id: str, query: str) -> Optional[Dict[str, Any]]:
     conn.commit()
     conn.close()
 
+    if connector["provider"].casefold() in _PATENTSVIEW_PROVIDERS:
+        if not connector.get("key_ciphertext"):
+            return {
+                "connector_id": connector_id,
+                "provider": connector["provider"],
+                "live": False,
+                "simulated": False,
+                "reason": "This connector has no encrypted API key. Re-link it to enable live search.",
+                "results": [],
+            }
+        try:
+            from cryptography.fernet import InvalidToken
+            api_key = _fernet().decrypt(
+                connector["key_ciphertext"].encode("ascii")
+            ).decode("utf-8")
+        except (InvalidToken, ConnectorConfigurationError) as exc:
+            reason = str(exc) if isinstance(exc, ConnectorConfigurationError) else (
+                "Could not decrypt this connector's API key; check CONNECTOR_ENCRYPTION_KEY."
+            )
+            return {
+                "connector_id": connector_id,
+                "provider": connector["provider"],
+                "live": False,
+                "simulated": False,
+                "reason": reason,
+                "results": [],
+            }
+
+        result = registry_lookup.lookup_patentsview(query, api_key)
+        return {
+            "connector_id": connector_id,
+            "provider": "USPTO PatentsView Search API",
+            "jurisdiction": "United States",
+            "scope": connector["scope"],
+            "live": result["live"],
+            "simulated": False,
+            "reason": result.get("reason"),
+            "results": result["results"],
+            "note": (
+                "Live US patent search results. These records are shown separately and are not "
+                "legal-corpus citations or a substitute for jurisdiction-specific legal review."
+            ) if result["live"] else result.get("reason"),
+        }
+
     return {
         "connector_id": connector_id,
         "provider": connector["provider"],
         "scope": connector["scope"],
+        "live": False,
         "simulated": True,
         "note": (
             f"Placeholder result from the user's linked '{connector['provider']}' subscription. "

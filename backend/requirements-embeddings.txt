@@ -1,0 +1,18 @@
+# Optional dense-retrieval stack for app/retrieval.py.
+#
+# NOT installed by default (see requirements.txt) — the default, always-
+# installed retrieval path is TF-IDF (scikit-learn), which is what actually
+# runs on a lightweight deployment (e.g. Render's free/starter tiers) and
+# in any environment without internet access to download the ~130MB ONNX
+# model from the Hugging Face Hub on first use.
+#
+# Install this file ON TOP of requirements.txt only if you have an
+# environment with more build time, memory, and bandwidth to spare, and
+# want BAAI/bge-small-en-v1.5 dense embedding retrieval instead:
+#
+#   pip install -r requirements.txt -r requirements-embeddings.txt
+#
+# No code change or flag is needed either way — app/retrieval.py detects
+# whether fastembed imports successfully and the model can be loaded,
+# and falls back to TF-IDF automatically if not.
+fastembed==0.3.6

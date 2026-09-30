@@ -30,14 +30,14 @@ _AREA_KEYWORDS = {
     "Trademarks": ["trademark", "brand name", "logo", "madrid protocol", "international trademark"],
     "Copyright": ["copyright", "literary work", "artistic work", "berne convention"],
     "Designs": ["design registration", "industrial design", "product shape", "hague agreement", "international design"],
-    "Trade Secrets": ["trade secret", "confidential formula", "undisclosed"],
+    "Trade Secrets": ["trade secret", "confidential formula", "undisclosed", "confidentiality", "non-disclosure", "nda", "breach of confidence"],
     "Plant Variety Protection": ["plant variety", "seed variety", "cultivar", "upov", "breeders right", "breeder's right"],
     "Traditional Knowledge": ["traditional knowledge", "classical text", "tkdl", "ancient", "folklore"],
-    "Access-and-Benefit-Sharing": ["biological resource", "genetic resource", "abs", "biodiversity", "benefit sharing", "national biodiversity authority", "nba approval"],
-    "Drug regulation": ["drug licence", "license", "manufacturing licence", "schedule t", "clinical", "drug approval"],
+    "Access-and-Benefit-Sharing": ["biological resource", "genetic resource", "abs", "biodiversity", "benefit sharing", "national biodiversity authority", "nba approval", "nagoya", "due diligence declaration"],
+    "Drug regulation": ["drug licence", "license", "manufacturing licence", "schedule t", "clinical", "drug approval", "traditional herbal", "herbal medicinal product", "thmpd", "hmpc", "marketing authorisation", "marketing authorization", "export market", "market access"],
     "Advertising": ["advertisement", "advertising claim", "misleading claim", "magic remedies", "objectionable advertisement"],
     "Labelling": ["label", "labelling", "packaging claim", "legal metrology", "net quantity"],
-    "Food / nutraceutical regulation": ["nutraceutical", "food supplement", "fssai", "health supplement"],
+    "Food / nutraceutical regulation": ["nutraceutical", "food supplement", "fssai", "health supplement", "dietary supplement", "dshea", "new dietary ingredient", "fda"],
     "Cosmetic regulation": ["cosmetic", "skincare regulation"],
 }
 

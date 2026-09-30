@@ -95,6 +95,10 @@ class AnalyzeResponse(BaseModel):
     # SUTRADHARA_STALE_DAYS days. None means every cited source is within
     # the freshness window — never fabricated, never suppressed.
     stale_sources_warning: Optional[str] = None
+    # Retrieval planning is model-driven only when explicitly enabled by the
+    # deployment; source selection and answer generation remain corpus-bound.
+    orchestration_mode: str = "deterministic_fallback"
+    research_plan: List[dict] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------

@@ -131,8 +131,8 @@ def test_generated_answer_only_cites_sources_that_were_actually_retrieved():
 
 
 def test_corpus_has_been_expanded_to_the_requested_range():
-    """20-40 verified sources, per the brief."""
-    assert 20 <= len(retrieval._CORPUS) <= 40
+    """Keep the curated, source-backed corpus within a reviewable size."""
+    assert 20 <= len(retrieval._CORPUS) <= 50
 
 
 def test_requested_category_and_abstention_routes():

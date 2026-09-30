@@ -83,12 +83,58 @@ def test_jurisdiction_isolation_holds_through_the_dag():
 
 
 def test_dag_is_deterministic_across_repeated_runs():
-    """Same input -> same path through the graph -> same output. The only
-    non-deterministic ingredient possible anywhere in this pipeline (an
-    optional external LLM paraphrase call inside app/llm.py) is disabled by
-    default and untouched by the DAG refactor either way."""
+    """With optional model features disabled, equal inputs produce equal outputs."""
     r1 = _run(CLASSICAL_QUERY, "India")
     r2 = _run(CLASSICAL_QUERY, "India")
     assert [s["id"] for s in r1["sources"]] == [s["id"] for s in r2["sources"]]
     assert r1["confidence"] == r2["confidence"]
     assert r1["abstained"] == r2["abstained"]
+    assert r1["orchestration_mode"] == "deterministic_fallback"
+
+
+def test_bounded_planner_executes_only_area_scoped_searches(monkeypatch):
+    step = {
+        "tool": "search_corpus",
+        "area": "Trade Secrets",
+        "query": "TRIPS Article 39 undisclosed information",
+    }
+    planning_calls = []
+
+    def fake_plan_research(query, jurisdiction, areas, **kwargs):
+        planning_calls.append(kwargs)
+        if kwargs.get("observations") is None:
+            return [step], "agentic_groq"
+        assert kwargs["max_steps"] == 1
+        assert kwargs["prior_steps"] == [step]
+        assert any(source["id"] == "INTL-TRIPS-39" for source in kwargs["observations"])
+        return [], "agentic_groq"
+
+    monkeypatch.setattr(dag.llm, "plan_research", fake_plan_research)
+    calls = []
+    source = {
+        "id": "INTL-TRIPS-39",
+        "title": "TRIPS Article 39",
+        "domain": "Trade Secrets",
+        "section": "Undisclosed information",
+        "relevance_score": 0.7,
+    }
+
+    def fake_retrieve(queries, jurisdiction, areas, top_k):
+        calls.append((queries, jurisdiction, areas, top_k))
+        return [source] if queries == [step["query"]] else []
+
+    monkeypatch.setattr(dag.retrieval, "retrieve", fake_retrieve)
+    state = {
+        "query": "What does TRIPS say about trade secrets?",
+        "retrieval_query": "What does TRIPS say about trade secrets?",
+        "jur": "International",
+        "areas": ["Trade Secrets"],
+        "query_variants": ["What does TRIPS say about trade secrets?"],
+    }
+    planned = dag._plan_research(state)
+    retrieved = dag._retrieve({**state, **planned})["retrieved"]
+
+    assert planned["planning_mode"] == "agentic_groq"
+    assert calls[1] == ([step["query"]], "International", ["Trade Secrets"], 5)
+    assert [document["id"] for document in retrieved] == ["INTL-TRIPS-39"]
+    assert len(planning_calls) == 2

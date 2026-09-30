@@ -25,19 +25,15 @@ Neo4j (optional, Phase 6) — explainability graph
    backend/graph/schema.cypher
 ```
 
-The answer is assembled directly from retrieved source text first, which
-guarantees zero hallucination independent of any LLM. An **optional Groq
-paraphrase layer** (`app/llm.py`, model `openai/gpt-oss-120b`) then runs on
-top of that already-grounded text purely to smooth it into more natural
-prose. It is constrained to paraphrase only — never to introduce a new legal
-claim, statute, or citation — and every `[Source: ...]` tag is checked
-programmatically after the call; if any tag was altered, added, or dropped,
-the paraphrase is discarded and the original template-assembled answer is
-used instead. If `GROQ_API_KEY` is unset or the call fails for any reason
-(no network route, timeout, rate limit), the pipeline falls back to the
-grounded template answer with no visible difference to the rest of the
-response. This is the single most important invariant to preserve as the
-system grows.
+The answer is assembled from retrieved corpus sources. A bounded research
+planner can optionally select additional corpus searches, but cannot add
+sources or write legal conclusions. An **optional Groq paraphrase layer**
+(`app/llm.py`, model `openai/gpt-oss-120b`) runs only on the assembled,
+source-grounded answer. It may rephrase that text, but it is not treated as
+a formal guarantee against every possible hallucination; source citations
+are checked and the original answer is retained if the citation check fails.
+Both external Groq features are opt-in/configurable and fall back to the
+local retrieval and template-answer path when disabled or unavailable.
 
 ## B. Folder structure
 
@@ -79,28 +75,36 @@ the brief exactly.
 4. Confidence is computed from the *retained* set (§I below).
 5. If confidence is below threshold or the set is empty → abstain.
 
-## E.1 Deterministic pipeline orchestration (`backend/app/dag.py`)
+## E.1 Bounded research planning and deterministic orchestration (`backend/app/dag.py`)
 
 `POST /api/analyze` no longer runs as one long imperative function inside
-`main.py`. It's now a deterministic LangGraph `StateGraph`:
+`main.py`. It runs in a LangGraph `StateGraph` with deterministic
+classification, jurisdiction checks, confidence gates, and response
+assembly. When `ENABLE_LLM_RESEARCH_PLANNER=true` and `GROQ_API_KEY` is set,
+an optional planner may propose up to two corpus-search tool calls, inspect
+the returned source metadata, and make one bounded follow-up decision (at
+most one additional call). Every call stays within the areas already
+selected by deterministic routing. It cannot change the jurisdiction, add
+sources, or author the legal answer. The response reports `orchestration_mode`
+and executed `research_plan`; invalid or unavailable plans use deterministic
+query-expansion retrieval.
 
 ```
 normalize_language → expand_query → classify
     ─(needs_clarification)→ clarification_response → END
-    ─(else)→ route_areas → retrieve → score_confidence
+    ─(else)→ route_areas → plan_research (opt-in) → retrieve → score_confidence
              → enrich_evidence → use_connector → log_evidence
     ─(abstained)→ abstain_response → END
     ─(else)→ build_answer → paraphrase → finalize_success → END
 ```
 
-Every edge is a plain `if`/`else` on state already computed earlier in the
-graph (`needs_clarification`, `abstained`) — never a decision an LLM makes —
-so the path taken and the output produced are 100% reproducible for a given
-input, corpus, and config. If the `langgraph` package isn't installed, the
-same node functions run through a hand-written sequential executor instead
-(same fallback pattern as the FAISS/TF-IDF split above); `GET /api/health`
-reports which backend (`langgraph` or `sequential`) actually executed via
-`dag_backend`. See `backend/app/dag.py`'s module docstring and
+Control-flow edges remain explicit and deterministic. Enabling the research
+planner sends the normalized query to Groq, so deployments must opt in only
+when that processing is acceptable. The planner is bounded to retrieval;
+it is not open-ended autonomous legal reasoning. If LangGraph is unavailable,
+the same node functions run through the sequential executor. `GET /api/health`
+reports the graph backend via `dag_backend`; the analysis response reports
+whether the planner or deterministic fallback handled retrieval. See
 `backend/tests/test_deterministic_dag.py`.
 
 ## F. API specification

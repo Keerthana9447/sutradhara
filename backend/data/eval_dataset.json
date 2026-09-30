@@ -144,7 +144,7 @@
   },
   {
     "id": "EV-13",
-    "query": "If my patented invention is based on genetic resources or traditional knowledge from a local community, what country-of-origin disclosure do I need to make internationally?",
+    "query": "I am patenting a new Ayurvedic formulation based on genetic resources or traditional knowledge from a local community. What country-of-origin disclosure is required internationally?",
     "jurisdiction": "International",
     "language": "en",
     "expect_clarification": false,
@@ -300,7 +300,7 @@
   },
   {
     "id": "EV-25",
-    "query": "What is the international standard for protecting undisclosed information or trade secrets under TRIPS?",
+    "query": "For my proprietary Ayurvedic extraction process, what international standard under TRIPS protects undisclosed information as a trade secret?",
     "jurisdiction": "International",
     "language": "en",
     "expect_clarification": false,

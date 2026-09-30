@@ -9,7 +9,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app import jurisdiction, retrieval  # noqa: E402
 
-EXPORT_IDS = {"INTL-EU-THMPD-2004", "INTL-US-DSHEA-1994", "INTL-EU-NAGOYA-REG-511-2014"}
+EXPORT_IDS = {
+    "INTL-EU-THMPD-2004",
+    "INTL-EU-EMA-HMPC-HERBAL",
+    "INTL-US-DSHEA-1994",
+    "INTL-US-FDA-NDI-NOTIFICATION",
+    "INTL-EU-NAGOYA-REG-511-2014",
+}
 REQUIRED = {"id", "title", "jurisdiction", "domain", "source_type", "section", "summary",
             "version_date", "retrieved_date", "source_url", "authority", "precision"}
 
@@ -42,6 +48,16 @@ def test_eu_traditional_herbal_query_retrieves_thmpd_first():
 def test_us_dietary_supplement_query_retrieves_dshea_first():
     q = "Can I sell my herbal capsules in the United States as a dietary supplement under DSHEA?"
     assert _top(q, "Ayurveda-Aahar / Nutraceutical")[0] == "INTL-US-DSHEA-1994"
+
+
+def test_us_new_dietary_ingredient_query_retrieves_fda_guidance_first():
+    q = "How do I notify FDA about a new dietary ingredient before marketing a herbal supplement?"
+    assert _top(q, "Ayurveda-Aahar / Nutraceutical")[0] == "INTL-US-FDA-NDI-NOTIFICATION"
+
+
+def test_eu_hmpc_monograph_query_retrieves_ema_overview_first():
+    q = "Can HMPC EU herbal monographs support a traditional use registration and quality review?"
+    assert _top(q, "Classical / Generic Medicine")[0] == "INTL-EU-EMA-HMPC-HERBAL"
 
 
 def test_nagoya_due_diligence_query_retrieves_eu_regulation_first():

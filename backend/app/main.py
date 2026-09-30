@@ -79,9 +79,10 @@ def analyze(req: AnalyzeRequest):
     """
     Thin HTTP adapter. All pipeline logic (language normalization, query
     expansion, classification, retrieval, confidence scoring, evidence
-    enrichment, answer generation, paraphrasing, translation) lives in the
-    deterministic LangGraph DAG defined in app/dag.py — see that module's
-    docstring for the graph shape and the langgraph/sequential fallback.
+    enrichment, bounded retrieval planning, answer generation, paraphrasing,
+    translation) lives in the LangGraph DAG defined in app/dag.py — see that
+    module's docstring for the explicit planner opt-in and deterministic
+    fallback behavior.
     Jurisdiction resolution stays here because it can raise a client-facing
     400, which belongs at the HTTP layer, not inside the pipeline graph.
     """

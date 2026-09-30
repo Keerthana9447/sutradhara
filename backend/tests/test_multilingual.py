@@ -158,6 +158,31 @@ def test_sanskrit_query_via_fallback_normalization_retrieves_same_evidence():
     _assert_fallback_equivalence(SA_QUERY, "SA")
 
 
+def test_fallback_normalization_preserves_specific_legal_intent():
+    queries = (
+        (
+            "எனது கிராமத்தில் மட்டும் விளையும் ஒரு தனித்துவமான மருத்துவ மூலிகைக்கு "
+            "புவிசார் குறியீடு (GI) பதிவு செய்ய முடியுமா?",
+            "IN-GI-1999",
+        ),
+        (
+            "എന്റെ ആയുർവേദ ഉൽപ്പന്നത്തിന്റെ ബ്രാൻഡ് നാമം ട്രേഡ്മാർക്കായി രജിസ്റ്റർ "
+            "ചെയ്യാൻ കഴിയുമോ?",
+            "IN-TM-1999",
+        ),
+        (
+            "किं मम औषधवनस्पत्युपयोगाय राष्ट्रियजैवविविधताप्राधिकरणस्य अनुमतिः आवश्यका?",
+            "IN-BDA-2002",
+        ),
+    )
+    for query, expected_id in queries:
+        normalized = language.fallback_normalize(query)
+        classification, areas, retrieved, _, abstained = _run_pipeline(normalized)
+        assert not abstained, normalized
+        assert retrieved, normalized
+        assert expected_id in {source["id"] for source in retrieved}, normalized
+
+
 def test_unsupported_query_still_abstains():
     """Proves retrieval was improved without disabling safe abstention."""
     _, _, retrieved, _, abstained = _run_pipeline(UNSUPPORTED_QUERY)

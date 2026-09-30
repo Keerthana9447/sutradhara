@@ -15,8 +15,9 @@ market, `reason()` chains:
     counterpart area(s) and their documents
 
 into a single explained path, each hop grounded in a real corpus entry id
-(never an invented node). This is the "relational knowledge graph and
-agentic, multi-source orchestration" the brief asks for.
+(never an invented node). This is a deterministic graph traversal; the
+optional bounded research planner is part of the /api/analyze retrieval DAG,
+not this what-if graph endpoint.
 
 Document lookups for each hop are delegated to graph_store.docs_for_area(),
 which transparently runs against a live Neo4j instance when one is

@@ -487,7 +487,7 @@
     "retrieved_date": "2026-09-28",
     "source_url": "https://www.indiacode.nic.in/handle/123456789/2187 (India Code — Indian Contract Act, 1872)",
     "authority": "Parliament of India (Contract Act); Indian courts (common-law breach-of-confidence doctrine); Ministry of Science and Technology (lapsed 2008 Bill, cited for context only)",
-    "precision": "framework-level. The India Code link is to the Contract Act itself (s.27's text is confirmed there); the breach-of-confidence/equity doctrine and the National Innovation Bill's lapsed status are drawn from secondary legal commentary (ipleaders.in, asiaiplaw.com), consistent with the case-law entry's precision convention, since there is no single primary statute to cite for a common-law-only regime. No case-law citation is attached here yet — Gujarat Bottling Co. Ltd. v. Coca Cola Co. (1995) and similar Supreme Court/High Court authority on this point should be added and independently verified before being relied on for a filing."
+    "precision": "framework-level. The India Code link confirms the Contract Act s.27 text; the common-law discussion is supplemented by the fact-specific Delhi High Court decisions in IN-CASELAW-GUJARAT-BOTTLING, IN-CASELAW-BURLINGTON-1995, and IN-CASELAW-AMEX-PRIYA-PURI-2006. These cases do not create a dedicated trade-secret statute or guarantee protection for public information; confirm current law and facts before reliance."
   },
   {
     "id": "INTL-TRIPS-39",
@@ -530,5 +530,61 @@
     "source_url": "https://legalblogs.wolterskluwer.com/trademark-blog/india-limitations-of-geographical-indication-and-certification-trademarks-tea-board-v-itc-limited-2019/ (Wolters Kluwer — case analysis)",
     "authority": "Calcutta High Court",
     "precision": "case-law analysis level — cited via secondary legal commentary (Wolters Kluwer, Managing IP, BananaIP), consistent with this corpus's existing case-law entries; no stable indiankanoon.org/court-registry link was confirmed live during this session. The limitation holding, the goods-only scope of s.22, and the case's standing as the first Indian GI-infringement decision are independently corroborated across multiple contemporaneous legal-press sources."
+  },
+  {
+    "id": "IN-CASELAW-BURLINGTON-1995",
+    "title": "Burlington Home Shopping Pvt. Ltd. v. Rajnish Chibber",
+    "jurisdiction": "India",
+    "domain": "Trade Secrets",
+    "source_type": "Case Law",
+    "section": "Delhi High Court, R.C. Lahoti J., decided 20 October 1995; 61 (1995) DLT 6; 1995 (35) DRJ 335",
+    "summary": "A mail-order company sought an interim injunction after a former employee allegedly used its compiled customer database to compete. The Delhi High Court found a strong prima facie copyright-infringement case on the record before it, including evidence that the defendant's database substantially copied the plaintiff's compilation, and restrained use of the plaintiff's exclusively owned customer list during the suit. The judgment discusses customer lists and business data as information that may be confidential, but its operative analysis rests on copying of a compiled database and copyright; it is not a rule that every customer list is automatically a trade secret. For an Ayurvedic business, the practical distinction is between a demonstrably protected, non-public compilation or formula and information independently ascertainable from public sources.",
+    "version_date": "decided 20 October 1995",
+    "retrieved_date": "2026-09-30",
+    "source_url": "https://indiankanoon.org/doc/130087/ (Indian Kanoon — judgment text)",
+    "authority": "Delhi High Court",
+    "precision": "case-law text; fact-specific interlocutory injunction grounded in the record and copyright in a copied compilation. The confidentiality discussion should not be generalized into a standalone trade-secret rule."
+  },
+  {
+    "id": "IN-CASELAW-AMEX-PRIYA-PURI-2006",
+    "title": "American Express Bank Ltd. v. Ms. Priya Puri",
+    "jurisdiction": "India",
+    "domain": "Trade Secrets",
+    "source_type": "Case Law",
+    "section": "Delhi High Court, Anil Kumar J., decided 24 May 2006",
+    "summary": "American Express sought an injunction against a former wealth-management employee over alleged use of customer information and trade secrets. On the interlocutory record, the Delhi High Court found the bank's allegations of taking confidential files insufficiently supported and refused to use confidentiality claims to create a monopoly over customers or restrain ordinary competition and employment. The judgment distinguishes genuinely secret business information from general skill, experience, customer relationships, and information readily ascertainable by independent effort; it does not hold that properly protected confidential information can never be protected. It is a fact-specific caution to identify the information claimed as secret and prove access, secrecy measures, and misuse.",
+    "version_date": "decided 24 May 2006",
+    "retrieved_date": "2026-09-30",
+    "source_url": "https://indiankanoon.org/doc/445135/ (Indian Kanoon — judgment text)",
+    "authority": "Delhi High Court",
+    "precision": "case-law text; interlocutory decision based on the evidence in that case. It distinguishes ascertainable customer relationships from protected confidential information and is not a categorical rule that customer data can never be secret."
+  },
+  {
+    "id": "INTL-EU-EMA-HMPC-HERBAL",
+    "title": "European Medicines Agency — Herbal medicinal products and HMPC EU monographs",
+    "jurisdiction": "International",
+    "domain": "Drug regulation",
+    "source_type": "Official regulatory overview",
+    "section": "Traditional-use registration; well-established use; EU herbal monographs and EU list entries",
+    "summary": "The European Medicines Agency describes the Committee on Herbal Medicinal Products (HMPC) role in establishing EU herbal monographs and an EU list for herbal substances and preparations. Monographs cover therapeutic uses and safe conditions for well-established and/or traditional use; applicants may use monographs and list entries in traditional-use registration applications, and demonstrating compliance with an EU list entry can remove the need to submit separate evidence of safe and traditional use. Monographs can also support well-established-use marketing authorisation. EMA distinguishes these therapeutic-use monographs from European Pharmacopoeia monographs, which address quality requirements; applicants must still establish product quality and use the applicable national authorization procedure. This is regulatory guidance for navigating the EU route, not a substitute for Directive 2001/83/EC or a product-specific assessment.",
+    "version_date": "Page retrieved 30 September 2026; page date not specified",
+    "retrieved_date": "2026-09-30",
+    "source_url": "https://www.ema.europa.eu/en/human-regulatory-overview/herbal-medicinal-products (European Medicines Agency — official overview)",
+    "authority": "European Medicines Agency; Committee on Herbal Medicinal Products (HMPC)",
+    "precision": "official regulatory overview; distinguishes the HMPC's therapeutic-use monographs from pharmacopoeial quality standards. The binding conditions remain those in the applicable EU legislation and national procedure."
+  },
+  {
+    "id": "INTL-US-FDA-NDI-NOTIFICATION",
+    "title": "US FDA — New Dietary Ingredient Notification Process",
+    "jurisdiction": "International",
+    "domain": "Food / nutraceutical regulation",
+    "source_type": "Official regulatory guidance",
+    "section": "FD&C Act §413; 21 U.S.C. §350b (new dietary ingredient notification)",
+    "summary": "The US FDA explains that manufacturers and distributors intending to market a dietary supplement containing a new dietary ingredient must notify FDA and provide the basis for concluding that the supplement will reasonably be expected to be safe under its labeled conditions of use. The statutory notice is generally due at least 75 days before marketing. Filing a notification is not FDA premarket approval or a finding that the product is safe. This is a separate compliance question from dietary-supplement cGMP, labeling, and whether disease claims cause a product to be regulated as a drug; the underlying statutory criteria and current FDA instructions should be checked for each ingredient and product.",
+    "version_date": "FDA process page retrieved 30 September 2026",
+    "retrieved_date": "2026-09-30",
+    "source_url": "https://www.fda.gov/food/dietary-supplements/new-dietary-ingredient-ndi-notification-process (US FDA — official process page)",
+    "authority": "US Food and Drug Administration; US Congress (FD&C Act §413)",
+    "precision": "official FDA process overview and statutory reference; the 75-day period is statutory. Not an FDA product approval or safety determination."
   }
 ]

@@ -88,6 +88,10 @@ HINDI_TERM_MAP = {
 }
 
 TAMIL_TERM_MAP = {
+    "எனது கிராமத்தில் மட்டும் விளையும்": "grows only in my village",
+    "ஒரு தனித்துவமான மருத்துவ மூலிகைக்கு": "unique medicinal herb",
+    "புவிசார் குறியீடு": "geographical indication",
+    "பதிவு செய்ய முடியுமா": "can register",
     "காப்புரிமை": "patent",
     "பாரம்பரிய அறிவு": "traditional knowledge",
     "ஆயுர்வேத": "Ayurvedic",
@@ -101,6 +105,10 @@ TAMIL_TERM_MAP = {
 }
 
 MALAYALAM_TERM_MAP = {
+    "എന്റെ ആയുർവേദ ഉൽപ്പന്നത്തിന്റെ": "my Ayurvedic product",
+    "ബ്രാൻഡ് നാമം": "brand name",
+    "ട്രേഡ്മാർക്കായി": "trademark",
+    "രജിസ്റ്റർ ചെയ്യാൻ കഴിയുമോ": "can I register",
     "പേറ്റന്റ്": "patent",
     "പരമ്പരാഗത അറിവ്": "traditional knowledge",
     "ആയുർവേദ": "Ayurvedic",
@@ -121,6 +129,9 @@ MALAYALAM_TERM_MAP = {
 # offline retrieval fallback match on domain concepts -- it is never shown
 # to the user as an authoritative translation.
 SANSKRIT_TERM_MAP = {
+    "मम औषधवनस्पत्युपयोगाय": "my medicinal plant use",
+    "राष्ट्रियजैवविविधताप्राधिकरणस्य": "National Biodiversity Authority",
+    "अनुमतिः आवश्यका": "approval necessary",
     "पेटेण्ट्": "patent",
     "परम्परागतं ज्ञानम्": "traditional knowledge",
     "आयुर्वेदीयम्": "Ayurvedic",

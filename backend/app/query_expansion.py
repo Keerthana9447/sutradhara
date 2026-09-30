@@ -15,6 +15,11 @@ legal claims.
 from typing import List
 
 _EXPANSIONS = [
+    (("country-of-origin disclosure", "country of origin disclosure", "gratk",
+      "associated traditional knowledge", "genetic resources or traditional knowledge"),
+     "WIPO GRATK treaty patent application disclosure genetic resources associated traditional knowledge country of origin"),
+    (("trips", "trade secret", "undisclosed information"),
+     "TRIPS Article 39 protection of undisclosed information secrecy commercial value reasonable steps"),
     (("ayurved",), "classical Ayurvedic formulation"),
     (("classical", "traditional", "authoritative text", "ancient text"),
      "traditional knowledge prior art"),

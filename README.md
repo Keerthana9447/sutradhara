@@ -31,7 +31,7 @@
 2. [Six flagship features](#2-six-flagship-features-beyond-the-core-pipeline)
 3. [Architecture](#3-architecture)
    - [3.1 System architecture](#31-system-architecture)
-   - [3.2 Deterministic pipeline DAG](#32-deterministic-pipeline-dag-appdagpy)
+   - [3.2 Bounded research planner and pipeline DAG](#32-bounded-research-planner-and-pipeline-dag-appdagpy)
    - [3.3 Request sequence — one `/api/analyze` call](#33-request-sequence--one-apianalyze-call)
    - [3.4 Multilingual flow — 6 languages](#34-multilingual-flow--6-languages)
    - [3.5 Voice flow — ASR / TTS](#35-voice-flow--asr--tts)
@@ -88,9 +88,11 @@ capabilities worth calling out on their own:
   input/output for Sanskrit falls back to the browser's own recognizer and
   synthesizer, approximated via the Hindi locale (`hi-IN`) — see
   [§3.5](#35-voice-flow--asr--tts).
-- 🔀 **Deterministic LangGraph DAG orchestration** — `POST /api/analyze` runs
-  as an explicit, reproducible graph of nodes, never an autonomous agent loop
-  — see [§3.2](#32-deterministic-pipeline-dag-appdagpy).
+- 🔀 **Bounded research planning with deterministic fallback** — `POST
+  /api/analyze` can use an explicitly enabled Groq planner to select up to
+  three corpus searches within deterministic jurisdiction/area boundaries.
+  The answer remains corpus-grounded; if planning is disabled or fails, the
+  deterministic retrieval path runs — see [§3.2](#32-research-planning-and-pipeline-dag-appdagpy).
 
 ---
 
@@ -127,31 +129,38 @@ flowchart TD
     style DB fill:#f3e5f5,stroke:#6a1b9a
 ```
 
-The answer is assembled **directly from retrieved source text first**, which
-guarantees zero hallucination independent of any LLM. An **optional Groq
-paraphrase layer** (`app/llm.py`, model `openai/gpt-oss-120b`) then runs on
-top of that already-grounded text purely to smooth it into more natural
-prose. It is constrained to paraphrase only — never to introduce a new legal
-claim, statute, or citation — and every `[Source: ...]` tag is checked
+The answer is assembled from retrieved corpus sources. A bounded research
+planner can optionally select additional corpus searches, but it cannot add
+sources or write legal conclusions. An **optional Groq paraphrase layer**
+(`app/llm.py`, model `openai/gpt-oss-120b`) runs only on the already-grounded
+answer. It is constrained to paraphrase only — never to introduce a new
+legal claim, statute, or citation — and every `[Source: ...]` tag is checked
 programmatically after the call; if any tag was altered, added, or dropped,
 the paraphrase is discarded and the grounded template answer is used
-instead. If `GROQ_API_KEY` is unset or the call fails for any reason, the
-pipeline falls back the same way, with no visible difference to the rest of
-the response. This is the single most important invariant in the system.
+instead.
 
-### 3.2 Deterministic pipeline DAG (`app/dag.py`)
+### 3.2 Bounded research planner and pipeline DAG (`app/dag.py`)
 
-`POST /api/analyze` does not run as one long imperative function. It is a
-deterministic LangGraph `StateGraph` — every edge is a plain `if`/`else` on
-state already computed earlier in the graph, **never** a decision an LLM
-makes, so the path taken and the output produced are 100% reproducible for a
-given input, corpus, and config.
+`POST /api/analyze` runs through a LangGraph `StateGraph` with deterministic
+classification, jurisdiction checks, confidence gates, and response
+assembly. If `ENABLE_LLM_RESEARCH_PLANNER=true` and `GROQ_API_KEY` is set,
+the model may plan up to two `search_corpus` tool calls, inspect their
+returned source metadata, and make one bounded follow-up decision (at most
+one more call). Each search is restricted to an area already selected by
+deterministic routing. The API response reports `orchestration_mode` and
+executed `research_plan`. This is bounded tool planning, not open-ended legal
+reasoning or authority to change jurisdiction or answer content.
+
+The opt-in sends the normalized query to Groq; leave the setting disabled
+if that external processing is not acceptable. With the planner disabled,
+unconfigured, or returning an invalid/unavailable plan, the deterministic
+query-expansion retrieval path is used.
 
 ```mermaid
 flowchart LR
     A["normalize_language"] --> B["expand_query"] --> C["classify"]
     C -->|"needs_clarification"| CR["clarification_response"] --> END1(["END"])
-    C -->|"else"| D["route_areas"] --> E["retrieve"] --> F["score_confidence"]
+    C -->|"else"| D["route_areas"] --> P["plan_research (opt-in)"] --> E["retrieve"] --> F["score_confidence"]
     F --> G["enrich_evidence"] --> H["use_connector"] --> I["log_evidence"]
     I -->|"abstained"| AB["abstain_response"] --> END2(["END"])
     I -->|"else"| J["build_answer"] --> K["paraphrase"] --> L["finalize_success"] --> END3(["END"])
@@ -514,9 +523,10 @@ sutradhara/
 
 ## 9. Known limitations (be upfront with judges about these)
 
-- The corpus is a curated prototype set (38 documents — 19 India + 19
+- The corpus is a curated prototype set (42 documents — 22 India + 20
   International, including the 2024 Patents/Biodiversity Rules and the WIPO
-  GRATK Treaty), not the full legal universe — by design (see brief §7),
+  GRATK Treaty, five Indian case-law entries, and additional EU/US herbal
+  market guidance), not the full legal universe — by design (see brief §7),
   though now covering patents/TKDL, drugs & cosmetics, ABS/biodiversity, GI,
   trademarks, copyright, designs, plant variety protection, FSSAI, and the
   major WIPO-administered treaties (PCT, Madrid, Hague, Berne, Paris) plus
@@ -630,7 +640,7 @@ sutradhara/
 
 | Layer | Choice |
 |---|---|
-| Orchestration | LangGraph deterministic `StateGraph`, sequential-executor fallback |
+| Orchestration | LangGraph `StateGraph`; opt-in bounded Groq retrieval planner; deterministic fallback |
 | API | FastAPI |
 | Dense retrieval | `BAAI/bge-small-en-v1.5` via `fastembed` (384-dim, ONNX) |
 | Vector index | FAISS `IndexFlatIP` (cosine similarity on normalized vectors) |

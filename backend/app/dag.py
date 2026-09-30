@@ -4,25 +4,24 @@ Deterministic pipeline DAG for /api/analyze.
 This module extracts the step-by-step pipeline that used to live inline in
 `main.py::analyze()` into a graph of small, single-purpose nodes and wires
 them together with LangGraph's `StateGraph`, wherever LangGraph is
-installed:
+installed. An explicitly enabled, bounded LLM planner may propose up to
+three corpus-search steps after deterministic area routing; it cannot choose
+the jurisdiction, add areas or sources, or write the legal answer.
 
     normalize_language -> expand_query -> classify
         --(needs_clarification)--> clarification_response -> END
-        --(else)-->                route_areas -> retrieve -> score_confidence
+        --(else)-->                route_areas -> plan_research -> retrieve
+                                    -> score_confidence
                                     -> enrich_evidence -> use_connector
         --(abstained)-->           abstain_response -> END
         --(else)-->                build_answer -> paraphrase -> finalize_success -> END
 
-It is a *deterministic* DAG, not an agent: every edge is a plain Python
-`if`/`else` on values already present in the state (`needs_clarification`,
-`abstained`) — never a decision made by an LLM. Given the same input and the
-same corpus/config, the path taken through the graph and the fields produced
-at each node are 100% reproducible. The one non-deterministic ingredient
-that can exist anywhere in this pipeline — the optional Groq paraphrase call
-inside `paraphrase_answer` (see app/llm.py) — was already present in the
-pre-DAG pipeline unchanged; the DAG does not add any new source of
-non-determinism, it only makes the existing control flow explicit and
-inspectable as a graph instead of a 150-line function body.
+Control-flow edges remain deterministic (`needs_clarification`, `abstained`).
+When `ENABLE_LLM_RESEARCH_PLANNER=true` and `GROQ_API_KEY` is configured, the
+planner selects bounded, area-scoped retrieval tool calls; otherwise, or on
+an invalid/unavailable plan, retrieval uses the deterministic query
+expansions. The answer itself is still assembled from retrieved corpus
+sources, with the optional paraphrase layer subject to citation validation.
 
 Fallback: if the `langgraph` package is not installed (or fails to import
 for any reason), `_run_sequential()` below calls the exact same node
@@ -64,6 +63,8 @@ class AnalyzeState(TypedDict, total=False):
     query_variants: List[str]
     classification: Any        # schemas.ClassificationResult
     areas: List[str]
+    research_plan: List[Dict[str, str]]
+    planning_mode: str
     retrieved: List[Dict[str, Any]]
     conf_score: float
     conf_label: str
@@ -139,6 +140,8 @@ def _clarification_response(state: AnalyzeState) -> Dict[str, Any]:
         "abstained": True,
         "input_language": state["input_language"],
         "retrieval_query": state["retrieval_query"] if state["retrieval_query"] != state["query"] else None,
+        "orchestration_mode": state.get("planning_mode", "deterministic_fallback"),
+        "research_plan": state.get("research_plan", []),
     }
     return {"response": response}
 
@@ -147,12 +150,77 @@ def _route_areas(state: AnalyzeState) -> Dict[str, Any]:
     return {"areas": jurisdiction.route_areas(state["retrieval_query"], state["classification"].category)}
 
 
+def _plan_research(state: AnalyzeState) -> Dict[str, Any]:
+    if jurisdiction.has_unsupported_foreign_country(state["query"], state["jur"]):
+        return {"research_plan": [], "planning_mode": "deterministic_fallback"}
+
+    plan, planning_mode = llm.plan_research(
+        state["retrieval_query"], state["jur"], state["areas"], max_steps=2,
+    )
+    allowed_areas = set(state["areas"])
+    validated_plan = [
+        step for step in plan
+        if step.get("tool") == "search_corpus"
+        and step.get("area") in allowed_areas
+        and isinstance(step.get("query"), str)
+        and step["query"].strip()
+    ][:3]
+    return {"research_plan": validated_plan, "planning_mode": planning_mode}
+
+
 def _retrieve(state: AnalyzeState) -> Dict[str, Any]:
     if jurisdiction.has_unsupported_foreign_country(state["query"], state["jur"]):
-        retrieved: List[Dict[str, Any]] = []
-    else:
-        retrieved = retrieval.retrieve(state["query_variants"], state["jur"], state["areas"], top_k=5)
-    return {"retrieved": retrieved}
+        return {"retrieved": [], "research_plan": []}
+
+    candidates = retrieval.retrieve(
+        state["query_variants"], state["jur"], state["areas"], top_k=5,
+    )
+    executed_plan: List[Dict[str, str]] = []
+
+    def execute_steps(steps: List[Dict[str, str]]) -> None:
+        for step in steps:
+            step_results = retrieval.retrieve(
+                [step["query"]], state["jur"], [step["area"]], top_k=5,
+            )
+            candidates.extend(
+                doc for doc in step_results if doc.get("domain") == step["area"]
+            )
+            executed_plan.append(step)
+
+    execute_steps(state.get("research_plan", []))
+
+    if state.get("planning_mode") == "agentic_groq" and executed_plan:
+        observations = [
+            {
+                "id": doc["id"],
+                "title": doc["title"],
+                "domain": doc["domain"],
+                "section": doc["section"],
+                "relevance_score": doc["relevance_score"],
+            }
+            for doc in candidates
+        ]
+        follow_up, _ = llm.plan_research(
+            state["retrieval_query"],
+            state["jur"],
+            state["areas"],
+            observations=observations,
+            prior_steps=executed_plan,
+            max_steps=1,
+        )
+        execute_steps(follow_up)
+
+    best_by_id: Dict[str, Dict[str, Any]] = {}
+    for doc in candidates:
+        current = best_by_id.get(doc["id"])
+        if current is None or doc["relevance_score"] > current["relevance_score"]:
+            best_by_id[doc["id"]] = doc
+    retrieved = sorted(
+        best_by_id.values(),
+        key=lambda doc: doc["relevance_score"],
+        reverse=True,
+    )[:5]
+    return {"retrieved": retrieved, "research_plan": executed_plan}
 
 
 def _score_confidence(state: AnalyzeState) -> Dict[str, Any]:
@@ -256,6 +324,8 @@ def _abstain_response(state: AnalyzeState) -> Dict[str, Any]:
         "connector_source_used": state["connector_source_used"],
         "dynamic_graph": state["dynamic_graph"],
         "stale_sources_warning": corpus_freshness.build_staleness_warning(state["retrieved"]),
+        "orchestration_mode": state.get("planning_mode", "deterministic_fallback"),
+        "research_plan": state.get("research_plan", []),
     }
     return {"response": response}
 
@@ -331,6 +401,8 @@ def _finalize_success(state: AnalyzeState) -> Dict[str, Any]:
         "connector_source_used": state["connector_source_used"],
         "dynamic_graph": state["dynamic_graph"],
         "stale_sources_warning": corpus_freshness.build_staleness_warning(state["retrieved"]),
+        "orchestration_mode": state.get("planning_mode", "deterministic_fallback"),
+        "research_plan": state.get("research_plan", []),
     }
     return {"response": response}
 
@@ -352,6 +424,7 @@ def _build_langgraph():
     builder.add_node("classify", _classify)
     builder.add_node("clarification_response", _clarification_response)
     builder.add_node("route_areas", _route_areas)
+    builder.add_node("plan_research", _plan_research)
     builder.add_node("retrieve", _retrieve)
     builder.add_node("score_confidence", _score_confidence)
     builder.add_node("enrich_evidence", _enrich_evidence)
@@ -370,7 +443,8 @@ def _build_langgraph():
         {"clarify": "clarification_response", "continue": "route_areas"},
     )
     builder.add_edge("clarification_response", END)
-    builder.add_edge("route_areas", "retrieve")
+    builder.add_edge("route_areas", "plan_research")
+    builder.add_edge("plan_research", "retrieve")
     builder.add_edge("retrieve", "score_confidence")
     builder.add_edge("score_confidence", "enrich_evidence")
     builder.add_edge("enrich_evidence", "use_connector")
@@ -412,6 +486,7 @@ def _run_sequential(state: AnalyzeState) -> AnalyzeState:
         return state
 
     state.update(_route_areas(state))
+    state.update(_plan_research(state))
     state.update(_retrieve(state))
     state.update(_score_confidence(state))
     state.update(_enrich_evidence(state))

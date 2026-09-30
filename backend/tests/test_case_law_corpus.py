@@ -17,4 +17,7 @@ def test_corpus_has_multiple_case_law_entries():
         "IN-CASELAW-DIVYA-PHARMACY",
         "IN-CASELAW-GUJARAT-BOTTLING",
         "IN-CASELAW-TEABOARD-ITC",
+        "IN-CASELAW-BURLINGTON-1995",
+        "IN-CASELAW-AMEX-PRIYA-PURI-2006",
     } <= case_law_ids
+    assert len(case_law_ids) >= 5

@@ -14,6 +14,26 @@ def test_reason_grounds_every_law_node_in_a_real_corpus_id():
         assert "source_id" in n and n["source_id"]
 
 
+def test_every_reasoning_edge_has_numeric_confidence_and_grounded_provenance():
+    result = graph_reasoning.reason("Classical / Generic Medicine", "India", export_intent=True)
+    corpus_ids = {doc["id"] for doc in graph_reasoning.graph_store.retrieval._CORPUS}
+
+    assert result["edges"]
+    for edge in result["edges"]:
+        assert isinstance(edge["confidence"], (int, float))
+        assert 0 <= edge["confidence"] <= 1
+        provenance = edge["provenance"]
+        assert provenance["basis"]
+        if provenance.get("source_id"):
+            assert provenance["source_id"] in corpus_ids
+        if provenance.get("basis") == "request_input":
+            assert provenance["reference"] in {"category", "export_intent"}
+        if provenance.get("basis") == "category_area_mapping":
+            assert provenance["value"] in graph_reasoning.jurisdiction_module._CATEGORY_DEFAULT_AREAS[
+                result["category"]
+            ]
+
+
 def test_reason_rejects_unknown_category():
     try:
         graph_reasoning.reason("Not A Real Category", "India")

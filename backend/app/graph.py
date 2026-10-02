@@ -10,15 +10,43 @@ and automatically falls back to RAG corpus dynamic graph construction if Neo4j i
 """
 import os
 import logging
+import math
 from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger("ip_sakti.graph")
+
+
+def _edge(
+    source: str,
+    target: str,
+    label: str,
+    confidence: float,
+    provenance: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create an edge with an explicit confidence and auditable provenance."""
+    return {
+        "from": source,
+        "to": target,
+        "label": label,
+        "confidence": confidence,
+        "provenance": provenance,
+    }
+
+
+def _source_confidence(source: Dict[str, Any]) -> float:
+    """Use retrieval's measured score, or certainty of an exact source record."""
+    score = source.get("relevance_score")
+    if isinstance(score, (int, float)) and not isinstance(score, bool) and math.isfinite(score) and 0 <= score <= 1:
+        return float(score)
+    return 1.0
+
 
 # Optional Neo4j driver
 try:
     from neo4j import GraphDatabase
     _NEO4J_AVAILABLE = True
 except ImportError:
+    GraphDatabase = None
     _NEO4J_AVAILABLE = False
 
 
@@ -46,6 +74,10 @@ def _query_neo4j_graph(query: str, category: str, jurisdiction_name: str) -> Opt
             """
             result = session.run(cypher, category=category, jurisdiction=jurisdiction_name)
             records = list(result)
+            records = [
+                rec for rec in records
+                if isinstance(rec["s"].get("id"), str) and rec["s"].get("id").strip()
+            ]
             if not records:
                 driver.close()
                 return None
@@ -53,6 +85,19 @@ def _query_neo4j_graph(query: str, category: str, jurisdiction_name: str) -> Opt
             nodes = []
             edges = []
             seen_nodes = set()
+            edge_map = {}
+
+            def add_path_edge(source_id, target_id, label, source_ref):
+                key = (source_id, target_id, label)
+                if key not in edge_map:
+                    edge_map[key] = _edge(
+                        source_id, target_id, label, 1.0,
+                        {"basis": "matched_graph_path", "source_ids": []},
+                    )
+                    edges.append(edge_map[key])
+                source_ids = edge_map[key]["provenance"]["source_ids"]
+                if source_ref not in source_ids:
+                    source_ids.append(source_ref)
 
             for rec in records:
                 c_node = rec["c"]
@@ -69,25 +114,25 @@ def _query_neo4j_graph(query: str, category: str, jurisdiction_name: str) -> Opt
                 if reg_id not in seen_nodes:
                     nodes.append({"id": reg_id, "label": r_node.get("name", "IP Regime"), "type": "IPRegime"})
                     seen_nodes.add(reg_id)
-                    edges.append({"from": "category", "to": reg_id, "label": "relevant_to"})
+                add_path_edge("category", reg_id, "relevant_to", s_node.get("id"))
 
                 law_id = f"law_{l_node.get('title', 'law')}"
                 if law_id not in seen_nodes:
                     nodes.append({"id": law_id, "label": l_node.get("title", "Law"), "type": "Law"})
                     seen_nodes.add(law_id)
-                    edges.append({"from": reg_id, "to": law_id, "label": "governed_by"})
+                add_path_edge(reg_id, law_id, "governed_by", s_node.get("id"))
 
                 prov_id = f"prov_{p_node.get('section', 'prov')}"
                 if prov_id not in seen_nodes:
                     nodes.append({"id": prov_id, "label": p_node.get("section", "Provision"), "type": "Provision"})
                     seen_nodes.add(prov_id)
-                    edges.append({"from": law_id, "to": prov_id, "label": "contains"})
+                add_path_edge(law_id, prov_id, "contains", s_node.get("id"))
 
                 src_id = f"src_{s_node.get('id', 'src')}"
                 if src_id not in seen_nodes:
                     nodes.append({"id": src_id, "label": s_node.get("id", "Source"), "type": "Source"})
                     seen_nodes.add(src_id)
-                    edges.append({"from": prov_id, "to": src_id, "label": "supported_by"})
+                add_path_edge(prov_id, src_id, "supported_by", s_node.get("id"))
 
             driver.close()
             return {
@@ -154,18 +199,22 @@ def build_dynamic_graph(
         "category": "Product Category",
     })
 
-    edges.append({
-        "from": product_node_id,
-        "to": cat_node_id,
-        "label": "belongs_to",
-    })
+    edges.append(_edge(
+        product_node_id, cat_node_id, "belongs_to", 1.0,
+        {"basis": "request_input", "reference": "category", "value": category_label},
+    ))
 
     # Node 3: IP Regimes
     regime_ids = []
     areas_to_use = list(applicable_areas) if applicable_areas else []
 
-    if retrieved_sources:
-        for src in retrieved_sources:
+    valid_sources = [
+        src for src in (retrieved_sources or [])
+        if isinstance(src, dict) and isinstance(src.get("id"), str) and src["id"].strip()
+    ]
+
+    if valid_sources:
+        for src in valid_sources:
             domain = src.get("domain")
             if domain and domain not in areas_to_use:
                 areas_to_use.append(domain)
@@ -181,11 +230,20 @@ def build_dynamic_graph(
             "type": "IPRegime",
             "category": "IP Regime",
         })
-        edges.append({
-            "from": cat_node_id,
-            "to": reg_id,
-            "label": "relevant_to",
-        })
+        supporting_sources = [src for src in valid_sources if src.get("domain") == area]
+        if supporting_sources:
+            confidence = max(_source_confidence(src) for src in supporting_sources)
+            provenance = {
+                "basis": "retrieved_sources",
+                "source_ids": [src["id"] for src in supporting_sources],
+            }
+        elif applicable_areas and area in applicable_areas:
+            confidence = 1.0
+            provenance = {"basis": "applicable_areas", "reference": area}
+        else:
+            confidence = 0.0
+            provenance = {"basis": "no_supporting_source", "source_ids": []}
+        edges.append(_edge(cat_node_id, reg_id, "relevant_to", confidence, provenance))
         regime_ids.append(reg_id)
 
     # Node 4: Laws, Provisions, and Sources from retrieved sources
@@ -193,11 +251,16 @@ def build_dynamic_graph(
     prov_map = {}     # section -> node_id
     source_map = {}   # src_id -> node_id
 
-    if retrieved_sources:
-        for idx, src in enumerate(retrieved_sources[:4]):
+    if valid_sources:
+        for idx, src in enumerate(valid_sources[:4]):
             law_title = src.get("title", "Governing Law")
             section = src.get("section", f"Section {idx+1}")
-            src_id_val = src.get("id", f"SRC-{idx+1}")
+            src_id_val = src["id"]
+            source_confidence = _source_confidence(src)
+            source_provenance = {
+                "basis": "retrieved_source",
+                "source_ids": [src_id_val],
+            }
 
             # Law node
             if law_title not in law_map:
@@ -210,11 +273,10 @@ def build_dynamic_graph(
                     "category": "Governing Law",
                 })
                 target_regime = regime_ids[0] if regime_ids else cat_node_id
-                edges.append({
-                    "from": target_regime,
-                    "to": law_node_id,
-                    "label": "governed_by",
-                })
+                edges.append(_edge(
+                    target_regime, law_node_id, "governed_by", source_confidence,
+                    source_provenance,
+                ))
             else:
                 law_node_id = law_map[law_title]
 
@@ -229,11 +291,10 @@ def build_dynamic_graph(
                     "type": "Provision",
                     "category": "Provision",
                 })
-                edges.append({
-                    "from": law_node_id,
-                    "to": prov_node_id,
-                    "label": "contains",
-                })
+                edges.append(_edge(
+                    law_node_id, prov_node_id, "contains", source_confidence,
+                    source_provenance,
+                ))
             else:
                 prov_node_id = prov_map[prov_key]
 
@@ -247,11 +308,10 @@ def build_dynamic_graph(
                     "type": "Source",
                     "category": "Authoritative Source",
                 })
-                edges.append({
-                    "from": prov_node_id,
-                    "to": src_node_id,
-                    "label": "supported_by",
-                })
+                edges.append(_edge(
+                    prov_node_id, src_node_id, "supported_by", source_confidence,
+                    source_provenance,
+                ))
 
     else:
         # No sources were actually retrieved for this query (e.g. the query
@@ -268,7 +328,10 @@ def build_dynamic_graph(
             "category": "No Evidence",
         })
         target_regime = regime_ids[0] if regime_ids else cat_node_id
-        edges.append({"from": target_regime, "to": empty_node_id, "label": "no_evidence_found"})
+        edges.append(_edge(
+            target_regime, empty_node_id, "no_evidence_found", 0.0,
+            {"basis": "empty_retrieval", "reference": "retrieved_sources", "source_ids": []},
+        ))
 
     note = f"Dynamic knowledge graph generated for '{short_query}' ({category_label}) in {jurisdiction_name} jurisdiction."
 

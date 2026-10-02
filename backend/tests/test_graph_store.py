@@ -111,3 +111,46 @@ def test_dynamic_graph_honors_neo4j_disable_switch(monkeypatch):
     monkeypatch.setattr(graph, "GraphDatabase", UnexpectedGraphDatabase)
 
     assert graph._query_neo4j_graph("query", "category", "India") is None
+
+
+def test_dynamic_graph_edges_carry_retrieval_confidence_and_source_provenance():
+    source = {
+        "id": "CORPUS-123",
+        "domain": "Patents",
+        "title": "Patent Act",
+        "section": "Section 3",
+        "relevance_score": 0.73,
+    }
+    result = graph.build_dynamic_graph(
+        "patent query", "Cosmetic", "India", [source], applicable_areas=["Patents"],
+    )
+    source_edges = [
+        edge for edge in result["edges"]
+        if edge["provenance"].get("source_ids") == ["CORPUS-123"]
+    ]
+
+    assert source_edges
+    assert all(edge["confidence"] == 0.73 for edge in source_edges)
+    assert all(isinstance(edge["confidence"], (int, float)) for edge in result["edges"])
+    assert all(edge["provenance"].get("basis") for edge in result["edges"])
+    assert any(
+        edge["label"] == "relevant_to"
+        and edge["provenance"].get("source_ids") == ["CORPUS-123"]
+        and edge["confidence"] == 0.73
+        for edge in result["edges"]
+    )
+
+
+def test_dynamic_graph_does_not_invent_source_ids_or_confidence_without_evidence():
+    result = graph.build_dynamic_graph(
+        "unmatched query", "Cosmetic", "India",
+        [{"domain": "Patents", "title": "Unidentified law", "section": "Section 1"}],
+        applicable_areas=[],
+    )
+
+    assert not [node for node in result["nodes"] if node["type"] == "Source"]
+    assert not [node for node in result["nodes"] if node.get("id", "").startswith("law_")]
+    assert all(isinstance(edge["confidence"], (int, float)) for edge in result["edges"])
+    unsupported = [edge for edge in result["edges"] if edge["confidence"] == 0.0]
+    assert unsupported
+    assert all(edge["provenance"].get("source_ids") == [] for edge in unsupported)

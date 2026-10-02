@@ -36,6 +36,22 @@ from . import graph_store
 from . import jurisdiction as jurisdiction_module
 
 
+def _edge(
+    source: str,
+    target: str,
+    label: str,
+    confidence: float,
+    provenance: Dict[str, Any],
+) -> Dict[str, Any]:
+    return {
+        "from": source,
+        "to": target,
+        "label": label,
+        "confidence": confidence,
+        "provenance": provenance,
+    }
+
+
 def _docs_for_area(area: str, jur: str, limit: int = 2) -> List[Dict[str, Any]]:
     return graph_store.docs_for_area(area, jur, limit)
 
@@ -58,8 +74,11 @@ def reason(category: str, jur: str, export_intent: bool = False) -> Dict[str, An
         {"id": "n_product", "label": "Ayurvedic product", "type": "Product"},
         {"id": "n_category", "label": category, "type": "ProductCategory"},
     ]
-    edges: List[Dict[str, str]] = [
-        {"from": "n_product", "to": "n_category", "label": "classified_as"},
+    edges: List[Dict[str, Any]] = [
+        _edge(
+            "n_product", "n_category", "classified_as", 1.0,
+            {"basis": "request_input", "reference": "category", "value": category},
+        ),
     ]
     steps: List[str] = [
         f"Step 1 — Product is classified as '{category}'.",
@@ -68,7 +87,14 @@ def reason(category: str, jur: str, export_intent: bool = False) -> Dict[str, An
     for i, area in enumerate(areas):
         area_node = f"n_area_{i}"
         nodes.append({"id": area_node, "label": area, "type": "IPRegime"})
-        edges.append({"from": "n_category", "to": area_node, "label": "relevant_to"})
+        edges.append(_edge(
+            "n_category", area_node, "relevant_to", 1.0,
+            {
+                "basis": "category_area_mapping",
+                "reference": f"jurisdiction._CATEGORY_DEFAULT_AREAS[{category!r}]",
+                "value": area,
+            },
+        ))
 
         docs = _docs_for_area(area, jur)
         if not docs:
@@ -82,7 +108,10 @@ def reason(category: str, jur: str, export_intent: bool = False) -> Dict[str, An
                 "id": doc_node, "label": f"{doc['title']} ({doc['section']})",
                 "type": "Law", "source_id": doc["id"],
             })
-            edges.append({"from": area_node, "to": doc_node, "label": "governed_by"})
+            edges.append(_edge(
+                area_node, doc_node, "governed_by", 1.0,
+                {"basis": "corpus_document", "source_id": doc["id"]},
+            ))
             doc_ids.append(doc["id"])
 
         steps.append(
@@ -102,13 +131,23 @@ def reason(category: str, jur: str, export_intent: bool = False) -> Dict[str, An
         ))
         export_node = "n_export"
         nodes.append({"id": export_node, "label": f"Export readiness ({other_jur})", "type": "ExportIntent"})
-        edges.append({"from": "n_category", "to": export_node, "label": "requires_for_export"})
+        edges.append(_edge(
+            "n_category", export_node, "requires_for_export", 1.0,
+            {"basis": "request_input", "reference": "export_intent", "value": True},
+        ))
         steps.append(f"Step — Export intent detected: chaining into {other_jur}-jurisdiction requirements (kept in a SEPARATE branch of this graph — never merged into a single /api/analyze answer, per the jurisdiction-isolation rule).")
 
         for i, area in enumerate(cross_border_areas):
             area_node = f"n_export_area_{i}"
             nodes.append({"id": area_node, "label": area, "type": "IPRegime"})
-            edges.append({"from": export_node, "to": area_node, "label": "relevant_to"})
+            edges.append(_edge(
+                export_node, area_node, "relevant_to", 1.0,
+                {
+                    "basis": "export_area_mapping",
+                    "reference": "cross_border_areas",
+                    "value": area,
+                },
+            ))
             docs = _docs_for_area(area, other_jur)
             for j, doc in enumerate(docs):
                 doc_node = f"{area_node}_doc_{j}"
@@ -116,7 +155,10 @@ def reason(category: str, jur: str, export_intent: bool = False) -> Dict[str, An
                     "id": doc_node, "label": f"{doc['title']} ({doc['section']})",
                     "type": "Law", "source_id": doc["id"],
                 })
-                edges.append({"from": area_node, "to": doc_node, "label": "governed_by"})
+                edges.append(_edge(
+                    area_node, doc_node, "governed_by", 1.0,
+                    {"basis": "corpus_document", "source_id": doc["id"]},
+                ))
             if docs:
                 steps.append(
                     f"Step — For {other_jur}, '{area}' is governed by: "
